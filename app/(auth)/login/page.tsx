@@ -5,49 +5,49 @@ import Image from "next/image";
 import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
+import { LoginSchema } from "@/validation";
+import { useFormik } from "formik";
+import * as Checkbox from "@radix-ui/react-checkbox";
+import { Check, Eye, EyeOff, Loader2, Zap } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const router = useRouter();
 
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
+  const formik = useFormik({
+    initialValues: { email: "", password: "" },
+    validationSchema: LoginSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      const response = await signIn("credentials", {
         redirect: false,
+        email: values.email,
+        password: values.password,
       });
       const session = await getSession();
+      setLoading(false);
 
-      if (result?.error) {
+      if (response?.error) {
         toast.error("Invalid email or password");
       } else {
         toast.success("Welcome back!");
         if (session?.user?.is_dhow_manager === true) {
-          router.push("/dhow-manager/dashboard")
+          router.push("/dhow-manager/dashboard");
         } else if (session?.user?.is_staff === true) {
-          router.push("/dhow-manager/dashboard")
+          router.push("/dhow-manager/dashboard");
         } else if (session?.user?.is_guest === true) {
-          router.push("/guest/dashboard")
+          router.push("/guest/dashboard");
         } else if (session?.user?.is_agent === true) {
-          router.push("/accountant/dashboard")
+          router.push("/agent/dashboard");
         } else {
-          router.push("/")
+          router.push("/");
         }
       }
-    } catch (error) {
-      toast.error("An unexpected error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+  });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
@@ -70,7 +70,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={formik.handleSubmit}>
           <div className="space-y-4">
             <div>
               <label
@@ -85,30 +85,51 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formik.values.email}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all"
                 placeholder="you@tamarind.co.ke"
               />
+              {formik.touched.email && formik.errors.email && (
+                <p className="text-red-500 text-sm mt-1">{formik.errors.email}</p>
+              )}
             </div>
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-semibold text-gray-700 mb-1"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all"
-                placeholder="••••••••"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="block text-sm font-medium text-[#1D1D1F]">
+                  Password
+                </label>
+                <Link href="/forgot-password" className="text-xs text-[#0071E3] hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Enter your password"
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  value={formik.values.password}
+                  className={`w-full px-4 py-3 pr-11 bg-white border rounded-xl text-sm text-[#1D1D1F] placeholder:text-[#86868B] focus:outline-none focus:ring-2 focus:ring-[#0071E3]/30 focus:border-[#0071E3] transition-all ${formik.touched.password && formik.errors.password
+                      ? "border-red-400"
+                      : "border-[#D2D2D7]"
+                    }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86868B] hover:text-[#1D1D1F] transition-colors"
+                >
+                  {showPassword ? <Eye className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {formik.touched.password && formik.errors.password && (
+                <p className="text-xs text-red-500 mt-1">{formik.errors.password}</p>
+              )}
             </div>
           </div>
 
@@ -141,11 +162,11 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all shadow-lg shadow-brand-500/20 transform hover:-translate-y-0.5 active:translate-y-0 ${isLoading ? "opacity-70 cursor-not-allowed" : ""
+              disabled={loading}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all shadow-lg shadow-brand-500/20 transform hover:-translate-y-0.5 active:translate-y-0 ${loading ? "opacity-70 cursor-not-allowed" : ""
                 }`}
             >
-              {isLoading ? (
+              {loading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Signing in...

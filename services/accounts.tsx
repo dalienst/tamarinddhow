@@ -93,10 +93,11 @@ export const resetPassword = async (data: resetPassword): Promise<any> => {
   return response.data;
 };
 
-export const signupDhowManager = async (data: SignupGuest): Promise<any> => {
+export const signupDhowManager = async (data: SignupGuest, headers: { headers: { Authorization: string } }): Promise<any> => {
   const response: AxiosResponse<any> = await apiActions.post(
     `/api/v1/auth/dhow-managers/signup/`,
-    data
+    data,
+    headers
   );
   return response.data;
 };

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,13 +23,23 @@ export default function LoginPage() {
         password,
         redirect: false,
       });
+      const session = await getSession();
 
       if (result?.error) {
         toast.error("Invalid email or password");
       } else {
         toast.success("Welcome back!");
-        router.push("/");
-        router.refresh();
+        if (session?.user?.is_dhow_manager === true) {
+          router.push("/dhow-manager/dashboard")
+        } else if (session?.user?.is_staff === true) {
+          router.push("/dhow-manager/dashboard")
+        } else if (session?.user?.is_guest === true) {
+          router.push("/guest/dashboard")
+        } else if (session?.user?.is_agent === true) {
+          router.push("/accountant/dashboard")
+        } else {
+          router.push("/")
+        }
       }
     } catch (error) {
       toast.error("An unexpected error occurred");
@@ -130,9 +141,8 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all shadow-lg shadow-brand-500/20 transform hover:-translate-y-0.5 active:translate-y-0 ${
-                isLoading ? "opacity-70 cursor-not-allowed" : ""
-              }`}
+              className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-xl text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all shadow-lg shadow-brand-500/20 transform hover:-translate-y-0.5 active:translate-y-0 ${isLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">

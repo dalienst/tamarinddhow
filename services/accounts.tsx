@@ -1,0 +1,133 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { apiActions } from "@/tools/axios";
+import { AxiosResponse } from "axios";
+
+export interface User {
+  id: string;
+  user_no: string;
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string | null;
+  country: string;
+  city: string | null;
+  address: string | null;
+  is_guest: boolean;
+  is_dhow_manager: boolean;
+  is_agent: boolean;
+  is_staff: boolean;
+  is_superuser: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  reference: string
+}
+
+export interface updateUser {
+  email: string;
+  first_name: string;
+  last_name: string;
+  country: string;
+  phone_number: string | null;
+  city: string | null;
+  address: string | null;
+}
+
+export interface forgotPassword {
+  email: string;
+}
+
+export interface resetPassword {
+  email: string;
+  code: string;
+  password: string;
+  password_confirmation: string;
+}
+
+export interface SignupAgent {
+  email: string;
+  username: string;
+  password: string;
+  password_confirmation: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface SignupGuest {
+  email: string;
+  username: string;
+  password: string;
+  password_confirmation: string;
+  first_name: string;
+  last_name: string;
+}
+
+export const getAccount = async (
+  reference: string,
+  headers: { headers: { Authorization: string } }
+): Promise<User> => {
+  const response: AxiosResponse<User> = await apiActions.get(
+    `/api/v1/auth/${reference}/`,
+    headers
+  );
+  return response.data;
+};
+
+export const forgotPassword = async (data: forgotPassword): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/password/forgot/`,
+    data
+  );
+  return response.data;
+};
+
+export const resetPassword = async (data: resetPassword): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/password/reset/`,
+    data
+  );
+  return response.data;
+};
+
+export const signupGuest = async (data: SignupGuest): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/guests/signup/`,
+    data
+  );
+  return response.data;
+};
+
+export const signupAgent = async (data: SignupAgent): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/agents/signup/`,
+    data
+  );
+  return response.data;
+};
+
+export const updateAccount = async (
+  reference: string,
+  data: updateUser,
+  headers: { headers: { Authorization: string } }
+): Promise<User> => {
+  const response: AxiosResponse<User> = await apiActions.patch(
+    `/api/v1/auth/${reference}/`,
+    data,
+    headers
+  );
+  return response.data;
+};
+
+export const deleteAccount = async (
+  reference: string,
+  headers: { headers: { Authorization: string } }
+): Promise<User> => {
+  const response: AxiosResponse<User> = await apiActions.delete(
+    `/api/v1/auth/${reference}/`,
+    headers
+  );
+  return response.data;
+};

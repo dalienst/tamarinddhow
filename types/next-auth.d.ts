@@ -13,6 +13,7 @@ declare module "next-auth" {
       is_superuser?: boolean;
       access?: string;
       refresh?: string;
+      token?: string;
       // Add other custom properties if necessary
     } & DefaultSession["user"];
   }
@@ -22,8 +23,11 @@ declare module "next-auth" {
     is_guest?: boolean;
     is_dhow_manager?: boolean;
     is_agent?: boolean;
+    is_staff?: boolean;
+    is_superuser?: boolean;
     access?: string;
     refresh?: string;
+    token?: string;
   }
 }
 
@@ -33,7 +37,10 @@ declare module "next-auth/jwt" {
     is_guest?: boolean;
     is_dhow_manager?: boolean;
     is_agent?: boolean;
+    is_staff?: boolean;
+    is_superuser?: boolean;
     access?: string;
     refresh?: string;
+    token?: string;
   }
 }

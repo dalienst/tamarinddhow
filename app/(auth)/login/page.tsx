@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Image from "next/image";
 import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -128,12 +129,12 @@ export default function LoginPage() {
             </div>
 
             <div className="text-sm">
-              <a
-                href="#"
+              <Link
+                href="/forgot-password"
                 className="font-semibold text-primary hover:text-primary-hover transition-colors"
               >
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 

@@ -2,11 +2,12 @@
 "use client";
 
 import { apiActions } from "@/tools/axios";
+import { extractProps } from "@radix-ui/themes/dist/cjs/helpers/extract-props.js";
 import { AxiosResponse } from "axios";
 
 export interface User {
   id: string;
-  user_no: string;
+  usercode: string;
   email: string;
   username: string;
   first_name: string;
@@ -92,6 +93,14 @@ export const resetPassword = async (data: resetPassword): Promise<any> => {
   return response.data;
 };
 
+export const signupDhowManager = async (data: SignupGuest): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/dhow-managers/signup/`,
+    data
+  );
+  return response.data;
+};
+
 export const signupGuest = async (data: SignupGuest): Promise<any> => {
   const response: AxiosResponse<any> = await apiActions.post(
     `/api/v1/auth/guests/signup/`,
@@ -109,12 +118,12 @@ export const signupAgent = async (data: SignupAgent): Promise<any> => {
 };
 
 export const updateAccount = async (
-  reference: string,
+  usercode: string,
   data: updateUser,
   headers: { headers: { Authorization: string } }
 ): Promise<User> => {
   const response: AxiosResponse<User> = await apiActions.patch(
-    `/api/v1/auth/${reference}/`,
+    `/api/v1/auth/${usercode}/`,
     data,
     headers
   );
@@ -122,11 +131,11 @@ export const updateAccount = async (
 };
 
 export const deleteAccount = async (
-  reference: string,
+  usercode: string,
   headers: { headers: { Authorization: string } }
 ): Promise<User> => {
   const response: AxiosResponse<User> = await apiActions.delete(
-    `/api/v1/auth/${reference}/`,
+    `/api/v1/auth/${usercode}/`,
     headers
   );
   return response.data;

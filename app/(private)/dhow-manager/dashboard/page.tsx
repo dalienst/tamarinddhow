@@ -1,11 +1,17 @@
 "use client"
 
+import { useState } from "react"
 import { useFetchAccount, useFetchAllUsers } from "@/hooks/accounts/actions"
 import { User } from "@/services/accounts"
+import CreateAgent from "@/forms/accounts/CreateAgent"
+import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
 
 export default function DhowManagerDashboard() {
     const { data: account, isLoading: accountLoading } = useFetchAccount()
-    const { data: accountsData, isLoading: accountsLoading, error: accountsError } = useFetchAllUsers()
+    const { data: accountsData, isLoading: accountsLoading, error: accountsError, refetch } = useFetchAllUsers()
+    
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false)
+    const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
 
     if (accountLoading || accountsLoading) {
         return (
@@ -24,6 +30,15 @@ export default function DhowManagerDashboard() {
     }
 
     const users = accountsData?.results || []
+
+    const closeModal = () => {
+        setActiveModal(null)
+    }
+
+    const handleSuccess = () => {
+        refetch()
+        closeModal()
+    }
 
     return (
         <div className="min-h-screen bg-gray-50/50 p-6">
@@ -67,11 +82,47 @@ export default function DhowManagerDashboard() {
 
                 {/* Users Table Section */}
                 <div className="bg-white rounded shadow border border-gray-100 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center">
+                    <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center relative overflow-visible">
                         <h2 className="text-lg font-semibold text-gray-900">User Registry</h2>
-                        <button className="bg-primary text-white px-4 py-2 rounded text-xs font-semibold hover:bg-primary-hover transition-all">
-                            + Add New User
-                        </button>
+                        
+                        {/* Popover Wrapper */}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                                className="bg-primary text-white px-4 py-2 rounded text-xs font-semibold hover:bg-primary-hover transition-all"
+                            >
+                                + Add New User
+                            </button>
+                            
+                            {isPopoverOpen && (
+                                <>
+                                    <div 
+                                        className="fixed inset-0 z-10" 
+                                        onClick={() => setIsPopoverOpen(false)}
+                                    ></div>
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
+                                        <button
+                                            onClick={() => {
+                                                setActiveModal("agent")
+                                                setIsPopoverOpen(false)
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            Create Agent
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setActiveModal("manager")
+                                                setIsPopoverOpen(false)
+                                            }}
+                                            className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                                        >
+                                            Create Dhow Manager
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
@@ -155,6 +206,41 @@ export default function DhowManagerDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Plain Tailwind Modal Implementation */}
+            {activeModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm"
+                        onClick={closeModal}
+                    ></div>
+                    
+                    {/* Modal Content */}
+                    <div className="relative bg-white rounded shadow-lg w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                            <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-widest">
+                                {activeModal === "agent" ? "Create New Agent" : "Create Dhow Manager"}
+                            </h3>
+                            <button 
+                                onClick={closeModal}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {activeModal === "agent" ? (
+                                <CreateAgent onSuccess={handleSuccess} onCancel={closeModal} />
+                            ) : (
+                                <CreateDhowManager onSuccess={handleSuccess} onCancel={closeModal} />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

@@ -58,8 +58,6 @@ export interface resetPassword {
 export interface SignupAgent {
   email: string;
   username: string;
-  password: string;
-  password_confirmation: string;
   first_name: string;
   last_name: string;
 }
@@ -67,8 +65,6 @@ export interface SignupAgent {
 export interface SignupGuest {
   email: string;
   username: string;
-  password: string;
-  password_confirmation: string;
   first_name: string;
   last_name: string;
 }
@@ -123,6 +119,18 @@ export const signupGuest = async (data: SignupGuest): Promise<any> => {
   const response: AxiosResponse<any> = await apiActions.post(
     `/api/v1/auth/guests/signup/`,
     data
+  );
+  return response.data;
+};
+
+export const activateAccount = async (
+  uidb64: string,
+  token: string,
+  password: string
+): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.patch(
+    `/api/v1/auth/activate/${uidb64}/${token}/`,
+    { password }
   );
   return response.data;
 };

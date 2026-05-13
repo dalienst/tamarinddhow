@@ -20,8 +20,6 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
       email: "",
       first_name: "",
       last_name: "",
-      password: "",
-      password_confirmation: "",
     } as SignupGuest,
     onSubmit: async (values) => {
       try {
@@ -38,7 +36,7 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
     <form onSubmit={formik.handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+          <label className="block text-[10px] font-semibold text-black mb-1">
             First Name
           </label>
           <input
@@ -46,12 +44,12 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
             type="text"
             onChange={formik.handleChange}
             value={formik.values.first_name}
-            className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full px-3 py-2 border border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             required
           />
         </div>
         <div>
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+          <label className="block text-[10px] font-semibold text-black mb-1">
             Last Name
           </label>
           <input
@@ -59,14 +57,14 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
             type="text"
             onChange={formik.handleChange}
             value={formik.values.last_name}
-            className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full px-3 py-2 border border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             required
           />
         </div>
       </div>
 
       <div>
-        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+        <label className="block text-[10px] font-semibold text-black mb-1">
           Username
         </label>
         <input
@@ -74,13 +72,13 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
           type="text"
           onChange={formik.handleChange}
           value={formik.values.username}
-          className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full px-3 py-2 border border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           required
         />
       </div>
 
       <div>
-        <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
+        <label className="block text-[10px] font-semibold text-black mb-1">
           Email Address
         </label>
         <input
@@ -88,38 +86,9 @@ export default function CreateDhowManager({ onSuccess, onCancel }: CreateDhowMan
           type="email"
           onChange={formik.handleChange}
           value={formik.values.email}
-          className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full px-3 py-2 border border-gray-500 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           required
         />
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
-            Password
-          </label>
-          <input
-            name="password"
-            type="password"
-            onChange={formik.handleChange}
-            value={formik.values.password}
-            className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            required
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">
-            Confirm Password
-          </label>
-          <input
-            name="password_confirmation"
-            type="password"
-            onChange={formik.handleChange}
-            value={formik.values.password_confirmation}
-            className="w-full px-3 py-2 border border-gray-100 rounded text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            required
-          />
-        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-50 mt-6">

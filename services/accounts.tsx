@@ -27,6 +27,13 @@ export interface User {
   reference: string
 }
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
 export interface updateUser {
   email: string;
   first_name: string;
@@ -120,8 +127,8 @@ export const signupGuest = async (data: SignupGuest): Promise<any> => {
   return response.data;
 };
 
-export const getAllUsers = async (headers: { headers: { Authorization: string } }): Promise<User[]> => {
-  const response: AxiosResponse<User[]> = await apiActions.get(
+export const getAllUsers = async (headers: { headers: { Authorization: string } }): Promise<PaginatedResponse<User>> => {
+  const response: AxiosResponse<PaginatedResponse<User>> = await apiActions.get(
     `/api/v1/auth/`,
     headers
   );

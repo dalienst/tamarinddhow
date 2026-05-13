@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { getAccount } from "@/services/accounts";
+import { getAccount, getAllUsers } from "@/services/accounts";
 import useAxiosAuth from "../authentication/useAxiosAuth";
 import useUserCode from "../authentication/useUserCode";
 
@@ -14,5 +14,14 @@ export function useFetchAccount() {
         queryKey: ["account", usercode],
         queryFn: () => getAccount(usercode!, header),
         enabled: !!usercode,
+    });
+}
+
+export function useFetchAllUsers() {
+    const header = useAxiosAuth();
+
+    return useQuery({
+        queryKey: ["users"],
+        queryFn: () => getAllUsers(header),
     });
 }

@@ -94,8 +94,18 @@ export const resetPassword = async (data: resetPassword): Promise<any> => {
 };
 
 export const signupDhowManager = async (data: SignupGuest, headers: { headers: { Authorization: string } }): Promise<any> => {
+  // Done by the Dhow Manager or Super Admin
   const response: AxiosResponse<any> = await apiActions.post(
     `/api/v1/auth/dhow-managers/signup/`,
+    data,
+    headers
+  );
+  return response.data;
+};
+
+export const signupAgent = async (data: SignupAgent, headers: { headers: { Authorization: string } }): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/agents/signup/`,
     data,
     headers
   );
@@ -110,10 +120,10 @@ export const signupGuest = async (data: SignupGuest): Promise<any> => {
   return response.data;
 };
 
-export const signupAgent = async (data: SignupAgent): Promise<any> => {
-  const response: AxiosResponse<any> = await apiActions.post(
-    `/api/v1/auth/agents/signup/`,
-    data
+export const getAllUsers = async (headers: { headers: { Authorization: string } }): Promise<User[]> => {
+  const response: AxiosResponse<User[]> = await apiActions.get(
+    `/api/v1/auth/`,
+    headers
   );
   return response.data;
 };

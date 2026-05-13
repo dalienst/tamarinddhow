@@ -23,7 +23,7 @@ export default function Navbar() {
     return (
         <nav className="bg-white border-b border-gray-100 px-6 py-3">
             <div className="flex items-center justify-between">
-                {/* Brand */}
+                {/* Brand - Left End */}
                 <div className="flex items-center gap-3">
                     <Image
                         src="/smallLogo.jpg"
@@ -42,39 +42,42 @@ export default function Navbar() {
                     </div>
                 </div>
 
-                {/* Links */}
-                <div className="hidden md:flex items-center gap-6">
-                    {navLinks.filter(link => link.show).map(link => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
-                                pathname === link.href ? "text-primary" : "text-gray-400 hover:text-gray-600"
-                            }`}
-                        >
-                            {link.name}
-                        </Link>
-                    ))}
-                </div>
-
-                {/* User Actions */}
-                <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex flex-col text-right">
-                        <p className="text-xs font-semibold text-gray-900 leading-none truncate max-w-[150px]">
-                            {user?.name || user?.email}
-                        </p>
-                        <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-1">
-                            {user?.is_superuser ? "Admin" : 
-                             user?.is_dhow_manager ? "Manager" : 
-                             user?.is_agent ? "Agent" : "Guest"}
-                        </p>
+                {/* Navigation and Actions - Right End */}
+                <div className="flex items-center gap-8">
+                    {/* Links */}
+                    <div className="hidden md:flex items-center gap-6">
+                        {navLinks.filter(link => link.show).map(link => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
+                                    pathname === link.href ? "text-primary" : "text-gray-400 hover:text-gray-600"
+                                }`}
+                            >
+                                {link.name}
+                            </Link>
+                        ))}
                     </div>
-                    <button
-                        onClick={() => signOut({ callbackUrl: "/login" })}
-                        className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors uppercase tracking-widest border border-red-100 px-3 py-1.5 rounded bg-red-50/50"
-                    >
-                        Logout
-                    </button>
+
+                    {/* User Actions */}
+                    <div className="flex items-center gap-4 pl-8 border-l border-gray-100">
+                        <div className="hidden sm:flex flex-col text-right">
+                            <p className="text-xs font-semibold text-gray-900 leading-none truncate max-w-[150px]">
+                                {user?.name || user?.email}
+                            </p>
+                            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest mt-1">
+                                {user?.is_superuser ? "Admin" : 
+                                 user?.is_dhow_manager ? "Manager" : 
+                                 user?.is_agent ? "Agent" : "Guest"}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => signOut({ callbackUrl: "/login" })}
+                            className="text-xs font-semibold text-red-500 hover:text-red-600 transition-colors uppercase tracking-widest border border-red-100 px-3 py-1.5 rounded bg-red-50/50"
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </div>
             </div>
         </nav>

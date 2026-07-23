@@ -1,10 +1,12 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @font-face {
   font-family: 'Google Sans';
   src: url('/fonts/GoogleSans-VariableFont.ttf') format('truetype');
   font-weight: 100 900;
   font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -12,6 +14,7 @@
   src: url('/fonts/GoogleSans-Italic.ttf') format('truetype');
   font-weight: 100 900;
   font-style: italic;
+  font-display: swap;
 }
 
 :root {
@@ -40,9 +43,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Google Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Google Sans', ui-monospace, SFMono-Regular, monospace;
-
+  --font-sans: 'Google Sans', sans-serif;
   /* Adding custom colors */
   --color-brand-50: var(--color-brand-50);
   --color-brand-100: var(--color-brand-100);
@@ -99,6 +100,9 @@
   --shadow-2xl: var(--shadow);
 }
 
-body {
-  font-family: var(--font-sans);
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
 }

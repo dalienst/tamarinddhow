@@ -7,9 +7,12 @@ import toast from "react-hot-toast";
 import { useFormik } from "formik";
 import { ResetPasswordSchema } from "@/validation";
 import { resetPassword } from "@/services/accounts";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   const formik = useFormik({
@@ -122,20 +125,29 @@ export default function ResetPasswordPage() {
               >
                 New Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                value={formik.values.password}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                className={`appearance-none relative block w-full px-4 py-3 border ${
-                  formik.touched.password && formik.errors.password
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-primary focus:border-transparent"
-                } placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 sm:text-sm transition-all`}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={formik.values.password}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className={`appearance-none relative block w-full px-4 py-3 pr-11 border ${
+                    formik.touched.password && formik.errors.password
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary focus:border-transparent"
+                  } placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 sm:text-sm transition-all`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {formik.touched.password && formik.errors.password ? (
                 <div className="mt-1 text-sm text-red-600">{formik.errors.password as React.ReactNode}</div>
               ) : null}
@@ -148,20 +160,29 @@ export default function ResetPasswordPage() {
               >
                 Confirm New Password
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formik.values.confirmPassword}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                className={`appearance-none relative block w-full px-4 py-3 border ${
-                  formik.touched.confirmPassword && formik.errors.confirmPassword
-                    ? "border-red-300 focus:ring-red-500"
-                    : "border-gray-300 focus:ring-primary focus:border-transparent"
-                } placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 sm:text-sm transition-all`}
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={formik.values.confirmPassword}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  className={`appearance-none relative block w-full px-4 py-3 pr-11 border ${
+                    formik.touched.confirmPassword && formik.errors.confirmPassword
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-primary focus:border-transparent"
+                  } placeholder-gray-400 text-gray-900 rounded-xl focus:outline-none focus:ring-2 sm:text-sm transition-all`}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {formik.touched.confirmPassword && formik.errors.confirmPassword ? (
                 <div className="mt-1 text-sm text-red-600">{formik.errors.confirmPassword as React.ReactNode}</div>
               ) : null}

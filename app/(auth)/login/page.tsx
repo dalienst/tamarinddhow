@@ -37,7 +37,7 @@ export default function LoginPage() {
         if (session?.user?.is_dhow_manager === true) {
           router.push("/dhow-manager/dashboard");
         } else if (session?.user?.is_staff === true) {
-          router.push("/dhow-manager/dashboard");
+          router.push("/superuser/dashboard");
         } else if (session?.user?.is_guest === true) {
           router.push("/guest/dashboard");
         } else if (session?.user?.is_agent === true) {
@@ -124,7 +124,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86868B] hover:text-[#1D1D1F] transition-colors"
                 >
-                  {showPassword ? <Eye className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
               {formik.touched.password && formik.errors.password && (

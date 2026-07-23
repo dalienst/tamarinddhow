@@ -19,6 +19,7 @@ import { useFetchAccount, useFetchAllUsers } from "@/hooks/accounts/actions"
 import { User } from "@/services/accounts"
 import CreateAgent from "@/forms/accounts/CreateAgent"
 import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
+import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner"
 
 export default function DhowManagerDashboard() {
   const { data: account, isLoading: accountLoading } = useFetchAccount()
@@ -28,11 +29,7 @@ export default function DhowManagerDashboard() {
   const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
 
   if (accountLoading || accountsLoading) {
-      return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-      )
+      return <LoadingSpinner />
   }
 
   if (accountsError) {

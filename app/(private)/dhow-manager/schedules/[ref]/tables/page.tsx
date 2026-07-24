@@ -3,7 +3,7 @@
 import React from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { createTable, assignTable } from "@/services/vessels";
+import { createTable, assignTable, createTableBulk } from "@/services/vessels";
 import {
   useFetchScheduleDetail,
   useFetchTables,
@@ -55,8 +55,32 @@ export default function DynamicTablesPage() {
         token
       );
       refetchTables();
-    } catch (err) {
-      toast.error("Failed to create table.");
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.non_field_errors?.[0] || err?.response?.data?.error || err?.response?.data?.capacity?.[0] || "Failed to create table.";
+      toast.error(errMsg);
+      throw err;
+    }
+  };
+
+  const handleBulkCreateTable = async (prefix: string, startNum: number, count: number, cap: number, desc: string) => {
+    if (!schedule) return;
+    try {
+      await createTableBulk(
+        {
+          schedule: schedule.id,
+          prefix,
+          start_number: startNum,
+          count,
+          capacity: cap,
+          description: desc,
+        },
+        token
+      );
+      refetchTables();
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.non_field_errors?.[0] || err?.response?.data?.error || "Failed to bulk create tables.";
+      toast.error(errMsg);
+      throw err;
     }
   };
 
@@ -95,6 +119,7 @@ export default function DynamicTablesPage() {
         bookings={bookings}
         onAssignTable={handleAssignTable}
         onCreateTable={handleCreateTable}
+        onBulkCreateTable={handleBulkCreateTable}
         disabled={schedule?.status === "completed"}
       />
     </div>

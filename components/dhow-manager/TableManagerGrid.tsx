@@ -11,6 +11,7 @@ interface TableManagerGridProps {
   bookings: Booking[];
   onAssignTable: (tableId: string, bookingId: string | null) => Promise<void>;
   onCreateTable: (tableNumber: string, capacity: number, description: string) => Promise<void>;
+  onBulkCreateTable: (prefix: string, startNumber: number, count: number, capacity: number, description: string) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -19,16 +20,25 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
   bookings,
   onAssignTable,
   onCreateTable,
+  onBulkCreateTable,
   disabled = false,
 }) => {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
+  const [createMode, setCreateMode] = useState<"single" | "bulk">("single");
 
   // New table form state
   const [newTableNum, setNewTableNum] = useState("");
   const [newCapacity, setNewCapacity] = useState("4");
   const [newDescription, setNewDescription] = useState("");
+
+  // Bulk creation states
+  const [bulkPrefix, setBulkPrefix] = useState("T");
+  const [bulkStartNum, setBulkStartNum] = useState("1");
+  const [bulkCount, setBulkCount] = useState("5");
+  const [bulkCapacity, setBulkCapacity] = useState("4");
+  const [bulkDescription, setBulkDescription] = useState("");
 
   const handleAssign = async () => {
     if (!selectedTable) return;
@@ -58,7 +68,28 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
       setNewDescription("");
       setIsCreating(false);
     } catch (err) {
-      toast.error("Failed to create table.");
+      // Handled by parent
+    }
+  };
+
+  const handleBulkCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkPrefix) {
+      toast.error("Please enter a table prefix.");
+      return;
+    }
+    try {
+      await onBulkCreateTable(
+        bulkPrefix,
+        parseInt(bulkStartNum, 10),
+        parseInt(bulkCount, 10),
+        parseInt(bulkCapacity, 10),
+        bulkDescription
+      );
+      toast.success(`Tables successfully generated!`);
+      setIsCreating(false);
+    } catch (err) {
+      // Handled by parent
     }
   };
 
@@ -79,48 +110,138 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
 
       {/* Create Table Form */}
       {isCreating && (
-        <form onSubmit={handleCreate} className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-5 space-y-4">
-          <h3 className="font-semibold text-amber-900 text-sm">Add New Table to Sailing</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Table Number/Name</label>
-              <input
-                type="text"
-                placeholder="e.g. T1, T2, Deck-1"
-                value={newTableNum}
-                onChange={(e) => setNewTableNum(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Capacity (Seats)</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={newCapacity}
-                onChange={(e) => setNewCapacity(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Description / Location</label>
-              <input
-                type="text"
-                placeholder="e.g. Window seat, Front Deck"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-              />
+        <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-amber-200/30 pb-2">
+            <h3 className="font-semibold text-amber-900 text-sm">Add New Table to Sailing</h3>
+            <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setCreateMode("single")}
+                className={`px-3 py-1 rounded-md transition-all ${
+                  createMode === "single" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Single Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateMode("bulk")}
+                className={`px-3 py-1 rounded-md transition-all ${
+                  createMode === "bulk" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                Bulk Generate
+              </button>
             </div>
           </div>
-          <button
-            type="submit"
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
-          >
-            Save Table
-          </button>
-        </form>
+
+          {createMode === "single" ? (
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Table Number/Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. T1, T2, Deck-1"
+                    value={newTableNum}
+                    onChange={(e) => setNewTableNum(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Capacity (Seats)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={newCapacity}
+                    onChange={(e) => setNewCapacity(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Description / Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Window seat, Front Deck"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+              >
+                Save Table
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleBulkCreate} className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Table Prefix</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. T"
+                    value={bulkPrefix}
+                    onChange={(e) => setBulkPrefix(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Start Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={bulkStartNum}
+                    onChange={(e) => setBulkStartNum(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Table Count</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={bulkCount}
+                    onChange={(e) => setBulkCount(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Capacity per Table</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={bulkCapacity}
+                    onChange={(e) => setBulkCapacity(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs font-medium text-slate-700 mb-1">Location / Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Main Deck"
+                    value={bulkDescription}
+                    onChange={(e) => setBulkDescription(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+              >
+                Generate Tables
+              </button>
+            </form>
+          )}
+        </div>
       )}
 
       {/* Grid of Tables */}

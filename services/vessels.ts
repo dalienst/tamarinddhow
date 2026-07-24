@@ -219,6 +219,24 @@ export const createTable = async (data: Partial<Table>, token: string): Promise<
   return response.data;
 };
 
+export interface TableBulkCreateData {
+  schedule: string;
+  prefix: string;
+  start_number: number;
+  count: number;
+  capacity: number;
+  description: string;
+}
+
+export const createTableBulk = async (data: TableBulkCreateData, token: string): Promise<Table[]> => {
+  const response: AxiosResponse<Table[]> = await apiActions.post(
+    "/api/v1/tables/bulk/",
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
 export const assignTable = async (
   tableId: string,
   bookingId: string | null,

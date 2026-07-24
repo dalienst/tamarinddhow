@@ -14,7 +14,7 @@ export interface Dhow {
   updated_at: string;
 }
 
-export type MealType = "lunch" | "sunset_cruise";
+export type MealType = "lunch" | "sunset_cruise" | "booze_cruise" | "special_cruise" | "dinner_cruise";
 
 export interface Package {
   id: string;

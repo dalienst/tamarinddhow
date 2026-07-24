@@ -30,7 +30,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
   const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund">("refund");
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
-  const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "card" | "mpesa">("cash");
+  const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived">("cash");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
           {
             booking: booking.id,
             amount: booking.total_amount || 5500,
-            payment_method: paymentState === "cash" ? "cash" : paymentState === "card" ? "card" : "mpesa",
+            payment_method: paymentState,
             status: "completed",
             phone_number: guestPhone || undefined,
             notes: `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
@@ -248,12 +248,13 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
         <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {[
             { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
-            { id: "card", label: "Paid — Card", desc: "POS card processed" },
-            { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa code verified" },
-            { id: "unpaid", label: "Unpaid", desc: "Pay on arrival / Pending" },
+            { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
+            { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
+            { id: "waived", label: "Waived", desc: "Complimentary" },
+            { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
           ].map((p) => (
             <button
               type="button"

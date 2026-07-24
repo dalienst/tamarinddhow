@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   ArrowRight,
   BookOpen,
-  Info
+  Info,
+  DollarSign
 } from "lucide-react";
 import Link from "next/link";
 
@@ -124,6 +125,35 @@ export default function HelpGuidePage() {
         "Assign and update tables to confirm optimal seating assignments."
       ],
       link: "/dhow-manager/schedules"
+    },
+    {
+      id: 8,
+      title: "Financial Center",
+      subtitle: "Manage holds & refunds",
+      icon: DollarSign,
+      color: "emerald",
+      description: "Approve refunds and track funds held in escrow for upcoming sailing voyages.",
+      details: [
+        "Navigate to the **Finance** section on the sidebar.",
+        "Under the **Escrow Holdings** tab, track secure deposits from online Stripe pre-payments.",
+        "Under the **Refund Processing** tab, view cancellation claims. Click 'Process Refund' to approve or reject.",
+        "Input the bank or M-Pesa B2C payout transaction code, add accounts notes, and complete verification."
+      ],
+      link: "/dhow-manager/finance"
+    },
+    {
+      id: 9,
+      title: "Scanner & Reports",
+      subtitle: "QR tickets & operations logs",
+      icon: FileText,
+      color: "indigo",
+      description: "Scan guest boarding ticket QR codes and audit operational performance metrics.",
+      details: [
+        "To scan guest ticket QR codes, open the **Scanner** page on a phone or tablet. Point the camera at the guest's ticket to check them in, or type their code manually.",
+        "Open the **Reports** section to review total gross revenue, average occupancy ratios, and minimum quota fulfillments.",
+        "Filter stats by date, vessel, or booking status, and export full reports in a CSV format."
+      ],
+      link: "/dhow-manager/reports"
     }
   ];
 

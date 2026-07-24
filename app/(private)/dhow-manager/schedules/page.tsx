@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Schedule, Dhow } from "@/types/dhow";
+import { Schedule, Dhow, MealType } from "@/types/dhow";
 import { openSchedule, closeSchedule, confirmSchedule, cancelSchedule, createSchedule } from "@/services/vessels";
 import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
@@ -48,7 +48,7 @@ export default function ScheduleCenterPage() {
   // New Schedule form state
   const [selectedDhow, setSelectedDhow] = useState("");
   const [date, setDate] = useState("");
-  const [mealType, setMealType] = useState<"lunch" | "sunset_cruise">("sunset_cruise");
+  const [mealType, setMealType] = useState<MealType>("sunset_cruise");
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("22:30");
   const [pricePerPerson, setPricePerPerson] = useState("5500");
@@ -597,8 +597,11 @@ export default function ScheduleCenterPage() {
                     onChange={(e) => setMealType(e.target.value as any)}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   >
-                    <option value="sunset_cruise">Sunset Cruise</option>
                     <option value="lunch">Lunch</option>
+                    <option value="sunset_cruise">Sunset Cruise</option>
+                    <option value="booze_cruise">Booze Cruise</option>
+                    <option value="special_cruise">Special Cruise</option>
+                    <option value="dinner_cruise">Dinner Cruise</option>
                   </select>
                 </div>
               </div>

@@ -119,8 +119,8 @@ export default function HelpGuidePage() {
       color: "teal",
       description: "Check in passengers and assign seating arrangements during sailing operations.",
       details: [
-        "Go to the **Schedules** page calendar and click the active date.",
-        "The right-side Manifest Drawer lists all confirmed guests.",
+        "Go to the **Sailing Calendar** or **Sailing List** page.",
+        "On the calendar view, click the active date to open the Manifest Drawer.",
         "Check off guests as they board using the check-in checklist toggles.",
         "Assign and update tables to confirm optimal seating assignments."
       ],

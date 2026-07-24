@@ -12,7 +12,8 @@ import {
   Ship, 
   QrCode,
   HelpCircle,
-  X
+  X,
+  List
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -26,7 +27,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
   const navItems = [
     { name: 'Dashboard', href: '/dhow-manager/dashboard', icon: Home },
-    { name: 'Schedules', href: '/dhow-manager/schedules', icon: Calendar },
+    { name: 'Sailing Calendar', href: '/dhow-manager/schedules', icon: Calendar },
+    { name: 'Sailing List', href: '/dhow-manager/schedules/list', icon: List },
     { name: 'Walk-In Booking', href: '/dhow-manager/walk-in', icon: UserPlus },
     { name: 'Finance & Escrow', href: '/dhow-manager/finance', icon: DollarSign },
     { name: 'Reports', href: '/dhow-manager/reports', icon: FileSpreadsheet },
@@ -69,7 +71,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           {/* Nav Links */}
           <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isActive = item.href === '/dhow-manager/schedules' 
+                ? pathname === item.href 
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.name}

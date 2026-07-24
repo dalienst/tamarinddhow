@@ -11,6 +11,7 @@ import {
   FileSpreadsheet, 
   Ship, 
   QrCode,
+  HelpCircle,
   X
 } from 'lucide-react';
 import Image from 'next/image';
@@ -31,6 +32,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: 'Reports', href: '/dhow-manager/reports', icon: FileSpreadsheet },
     { name: 'Vessels', href: '/dhow-manager/vessels', icon: Ship },
     { name: 'Scanner', href: '/dhow-manager/scanner', icon: QrCode },
+    { name: 'Help Guide', href: '/dhow-manager/help', icon: HelpCircle },
   ];
 
   return (

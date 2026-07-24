@@ -179,7 +179,7 @@ export default function CreateScheduleTemplateForm({
         >
           {isSaving ? (
             <>
-              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
               Saving...
             </>
           ) : (

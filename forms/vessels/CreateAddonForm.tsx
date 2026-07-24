@@ -85,7 +85,7 @@ export default function CreateAddonForm({ onSuccess, token }: CreateAddonFormPro
       >
         {isSaving ? (
           <>
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
             Saving...
           </>
         ) : (

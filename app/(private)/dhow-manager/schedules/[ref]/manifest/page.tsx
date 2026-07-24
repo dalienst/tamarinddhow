@@ -12,6 +12,7 @@ import { Booking } from "@/types/booking";
 import { DigitalCheckInList } from "@/components/dhow-manager/DigitalCheckInList";
 import { ArrowLeft, Lock, Check, Anchor } from "lucide-react";
 import toast from "react-hot-toast";
+import { Skeleton, SkeletonRow } from "@/components/common/Skeleton";
 
 export default function ManifestPage() {
   const params = useParams();
@@ -21,13 +22,32 @@ export default function ManifestPage() {
   const token = session?.user?.token || "";
 
   // Query Hooks
-  const { data: schedule, refetch: refetchSchedule } = useFetchScheduleDetail(scheduleRef);
-  const { data: bookingsData, refetch: refetchBookings } = useFetchBookings(
+  const { data: schedule, isLoading: loadingSchedule, refetch: refetchSchedule } = useFetchScheduleDetail(scheduleRef);
+  const { data: bookingsData, isLoading: loadingBookings, refetch: refetchBookings } = useFetchBookings(
     schedule?.id ? { schedule: schedule.id } : undefined
   );
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
+
+  if (loadingSchedule || loadingBookings) {
+    return (
+      <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-8 h-8 rounded-lg" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <SkeletonRow key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (bookingsData?.results) {

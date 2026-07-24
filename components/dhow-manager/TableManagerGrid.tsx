@@ -11,7 +11,7 @@ interface TableManagerGridProps {
   bookings: Booking[];
   onAssignTable: (tableId: string, bookingId: string | null) => Promise<void>;
   onCreateTable: (tableNumber: string, capacity: number, description: string) => Promise<void>;
-  onBulkCreateTable: (prefix: string, startNumber: number, count: number, capacity: number, description: string) => Promise<void>;
+  onBulkCreateTable: (tables: { table_number: string; capacity: number; description?: string }[]) => Promise<void>;
   disabled?: boolean;
 }
 
@@ -27,18 +27,40 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
   const [selectedBookingId, setSelectedBookingId] = useState<string>("");
   const [isCreating, setIsCreating] = useState(false);
   const [createMode, setCreateMode] = useState<"single" | "bulk">("single");
+  const [isSaving, setIsSaving] = useState(false);
 
   // New table form state
   const [newTableNum, setNewTableNum] = useState("");
   const [newCapacity, setNewCapacity] = useState("4");
   const [newDescription, setNewDescription] = useState("");
 
-  // Bulk creation states
-  const [bulkPrefix, setBulkPrefix] = useState("T");
-  const [bulkStartNum, setBulkStartNum] = useState("1");
-  const [bulkCount, setBulkCount] = useState("5");
-  const [bulkCapacity, setBulkCapacity] = useState("4");
-  const [bulkDescription, setBulkDescription] = useState("");
+  // Bulk creation state
+  const [bulkTables, setBulkTables] = useState<{ table_number: string; capacity: number; description: string }[]>([
+    { table_number: "", capacity: 4, description: "" }
+  ]);
+
+  const addBulkRow = () => {
+    setBulkTables([...bulkTables, { table_number: "", capacity: 4, description: "" }]);
+  };
+
+  const removeBulkRow = (index: number) => {
+    if (isSaving) return;
+    if (bulkTables.length === 1) {
+      toast.error("You must have at least one table definition.");
+      return;
+    }
+    setBulkTables(bulkTables.filter((_, idx) => idx !== index));
+  };
+
+  const updateBulkRow = (index: number, field: string, value: any) => {
+    const updated = bulkTables.map((row, idx) => {
+      if (idx === index) {
+        return { ...row, [field]: value };
+      }
+      return row;
+    });
+    setBulkTables(updated);
+  };
 
   const handleAssign = async () => {
     if (!selectedTable) return;
@@ -61,6 +83,7 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
       toast.error("Please enter a table number.");
       return;
     }
+    setIsSaving(true);
     try {
       await onCreateTable(newTableNum, parseInt(newCapacity, 10), newDescription);
       toast.success(`Table ${newTableNum} created!`);
@@ -69,27 +92,39 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
       setIsCreating(false);
     } catch (err) {
       // Handled by parent
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleBulkCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bulkPrefix) {
-      toast.error("Please enter a table prefix.");
-      return;
+    for (let i = 0; i < bulkTables.length; i++) {
+      if (!bulkTables[i].table_number.trim()) {
+        toast.error(`Please fill in Table Number for row ${i + 1}.`);
+        return;
+      }
+      if (bulkTables[i].capacity < 1) {
+        toast.error(`Capacity must be at least 1 for row ${i + 1}.`);
+        return;
+      }
     }
+    setIsSaving(true);
     try {
       await onBulkCreateTable(
-        bulkPrefix,
-        parseInt(bulkStartNum, 10),
-        parseInt(bulkCount, 10),
-        parseInt(bulkCapacity, 10),
-        bulkDescription
+        bulkTables.map(t => ({
+          table_number: t.table_number.trim(),
+          capacity: Number(t.capacity),
+          description: t.description.trim() || undefined
+        }))
       );
       toast.success(`Tables successfully generated!`);
+      setBulkTables([{ table_number: "", capacity: 4, description: "" }]);
       setIsCreating(false);
     } catch (err) {
       // Handled by parent
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -100,7 +135,8 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
         <div className="flex justify-end">
           <button
             onClick={() => setIsCreating(!isCreating)}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm"
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm disabled:opacity-60"
           >
             <Plus className="w-4 h-4" />
             {isCreating ? "Cancel" : "Add Table"}
@@ -116,19 +152,21 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
             <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setCreateMode("single")}
                 className={`px-3 py-1 rounded-md transition-all ${
                   createMode === "single" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
+                } disabled:opacity-60`}
               >
                 Single Table
               </button>
               <button
                 type="button"
+                disabled={isSaving}
                 onClick={() => setCreateMode("bulk")}
                 className={`px-3 py-1 rounded-md transition-all ${
                   createMode === "bulk" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
+                } disabled:opacity-60`}
               >
                 Bulk Generate
               </button>
@@ -142,103 +180,129 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
                   <label className="block text-xs font-medium text-slate-700 mb-1">Table Number/Name</label>
                   <input
                     type="text"
+                    disabled={isSaving}
                     placeholder="e.g. T1, T2, Deck-1"
                     value={newTableNum}
                     onChange={(e) => setNewTableNum(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Capacity (Seats)</label>
                   <input
                     type="number"
+                    disabled={isSaving}
                     min="1"
                     max="20"
                     value={newCapacity}
                     onChange={(e) => setNewCapacity(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Description / Location</label>
                   <input
                     type="text"
+                    disabled={isSaving}
                     placeholder="e.g. Window seat, Front Deck"
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   />
                 </div>
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+                disabled={isSaving}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save Table
+                {isSaving ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Table"
+                )}
               </button>
             </form>
           ) : (
             <form onSubmit={handleBulkCreate} className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Table Prefix</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. T"
-                    value={bulkPrefix}
-                    onChange={(e) => setBulkPrefix(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Start Number</label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={bulkStartNum}
-                    onChange={(e) => setBulkStartNum(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Table Count</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={bulkCount}
-                    onChange={(e) => setBulkCount(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Capacity per Table</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={bulkCapacity}
-                    onChange={(e) => setBulkCapacity(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Location / Description</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Main Deck"
-                    value={bulkDescription}
-                    onChange={(e) => setBulkDescription(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                  />
-                </div>
+              <div className="space-y-3">
+                {bulkTables.map((row, index) => (
+                  <div key={index} className="flex flex-col sm:flex-row items-end gap-3 bg-white p-3 rounded-lg border border-slate-200 shadow-sm relative">
+                    <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Table Number/Name</label>
+                      <input
+                        type="text"
+                        disabled={isSaving}
+                        placeholder="e.g. T1, T2"
+                        required
+                        value={row.table_number}
+                        onChange={(e) => updateBulkRow(index, "table_number", e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 bg-white disabled:opacity-60"
+                      />
+                    </div>
+                    <div className="w-full sm:w-28">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Capacity</label>
+                      <input
+                        type="number"
+                        disabled={isSaving}
+                        min="1"
+                        max="20"
+                        required
+                        value={row.capacity}
+                        onChange={(e) => updateBulkRow(index, "capacity", parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 bg-white disabled:opacity-60"
+                      />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Description / Location</label>
+                      <input
+                        type="text"
+                        disabled={isSaving}
+                        placeholder="e.g. Left window"
+                        value={row.description}
+                        onChange={(e) => updateBulkRow(index, "description", e.target.value)}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 bg-white disabled:opacity-60"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => removeBulkRow(index)}
+                      className="px-3 py-2 text-xs font-semibold bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-lg transition-colors border border-rose-200 disabled:opacity-60"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))}
               </div>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
-              >
-                Generate Tables
-              </button>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={addBulkRow}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors border border-slate-300 disabled:opacity-60"
+                >
+                  + Add Table Row
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                      Generating...
+                    </>
+                  ) : (
+                    "Generate Tables"
+                  )}
+                </button>
+              </div>
             </form>
           )}
         </div>

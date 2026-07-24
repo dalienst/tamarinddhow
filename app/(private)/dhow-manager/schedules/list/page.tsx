@@ -7,6 +7,7 @@ import { openSchedule, closeSchedule, confirmSchedule, cancelSchedule, createSch
 import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { Skeleton, SkeletonCard } from "@/components/common/Skeleton";
 import { 
   Calendar as CalendarIcon, 
   Ship, 
@@ -22,8 +23,8 @@ export default function ScheduleListPage() {
   const token = session?.user?.token || "";
 
   // Query Hooks
-  const { data: schedulesData, refetch: refetchSchedules } = useFetchSchedules();
-  const { data: dhowsData } = useFetchDhows();
+  const { data: schedulesData, isLoading: loadingSchedules, refetch: refetchSchedules } = useFetchSchedules();
+  const { data: dhowsData, isLoading: loadingDhows } = useFetchDhows();
 
   const schedules = schedulesData?.results || [];
   const dhows = dhowsData?.results || [];
@@ -32,6 +33,24 @@ export default function ScheduleListPage() {
   const viewMode = "list";
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  if (loadingSchedules || loadingDhows) {
+    return (
+      <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   // New Schedule form state
   const [selectedDhow, setSelectedDhow] = useState("");

@@ -6,6 +6,7 @@ import { Schedule, Dhow, MealType } from "@/types/dhow";
 import { openSchedule, closeSchedule, confirmSchedule, cancelSchedule, createSchedule } from "@/services/vessels";
 import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
+import { Skeleton } from "@/components/common/Skeleton";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { 
   Calendar as CalendarIcon, 
@@ -32,8 +33,8 @@ export default function ScheduleCenterPage() {
   const token = session?.user?.token || "";
 
   // Query Hooks
-  const { data: schedulesData, refetch: refetchSchedules } = useFetchSchedules();
-  const { data: dhowsData } = useFetchDhows();
+  const { data: schedulesData, isLoading: loadingSchedules, refetch: refetchSchedules } = useFetchSchedules();
+  const { data: dhowsData, isLoading: loadingDhows } = useFetchDhows();
 
   const schedules = schedulesData?.results || [];
   const dhows = dhowsData?.results || [];
@@ -44,6 +45,27 @@ export default function ScheduleCenterPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  if (loadingSchedules || loadingDhows) {
+    return (
+      <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-6 space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // New Schedule form state
   const [selectedDhow, setSelectedDhow] = useState("");

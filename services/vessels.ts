@@ -219,13 +219,15 @@ export const createTable = async (data: Partial<Table>, token: string): Promise<
   return response.data;
 };
 
+export interface TableItemInput {
+  table_number: string;
+  capacity: number;
+  description?: string;
+}
+
 export interface TableBulkCreateData {
   schedule: string;
-  prefix: string;
-  start_number: number;
-  count: number;
-  capacity: number;
-  description: string;
+  tables: TableItemInput[];
 }
 
 export const createTableBulk = async (data: TableBulkCreateData, token: string): Promise<Table[]> => {

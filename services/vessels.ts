@@ -98,6 +98,29 @@ export const createScheduleTemplate = async (
   return response.data;
 };
 
+export const updateScheduleTemplate = async (
+  reference: string,
+  data: Partial<ScheduleTemplate>,
+  token: string
+): Promise<ScheduleTemplate> => {
+  const response: AxiosResponse<ScheduleTemplate> = await apiActions.patch(
+    `/api/v1/schedule-templates/${reference}/`,
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
+export const deleteScheduleTemplate = async (
+  reference: string,
+  token: string
+): Promise<void> => {
+  await apiActions.delete(
+    `/api/v1/schedule-templates/${reference}/`,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+};
+
 /* SCHEDULES */
 export const getSchedules = async (params?: Record<string, any>, headers?: any): Promise<PaginatedResponse<Schedule>> => {
   const response: AxiosResponse<PaginatedResponse<Schedule>> = await apiActions.get(

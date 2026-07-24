@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createBooking } from "@/services/bookings";
+import { createBooking, createBookingGuest } from "@/services/bookings";
 import { createPayment } from "@/services/payments";
 import { useFetchSchedules, useFetchPackages } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign } from "lucide-react";
@@ -67,6 +67,22 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
         token
       );
 
+      // 2. Register Guest details inside the guest roster
+      const nameParts = guestName.trim().split(" ");
+      const firstName = nameParts[0] || "Walk-In";
+      const lastName = nameParts.slice(1).join(" ") || "Guest";
+      await createBookingGuest(
+        {
+          booking: booking.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: guestEmail || undefined,
+          phone: guestPhone || undefined,
+          is_primary: true,
+        },
+        token
+      );
+
       // 2. Record Payment if paid (Walk-in payments bypass escrow)
       if (paymentState !== "unpaid") {
         await createPayment(
@@ -93,7 +109,12 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       setPaymentState("cash");
       onSuccess();
     } catch (err: any) {
-      toast.error("Failed to create walk-in booking.");
+      console.error("Booking error details:", err.response?.data);
+      const errMsg = err.response?.data?.non_field_errors?.[0] || 
+                     (err.response?.data ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ") : "") ||
+                     err.message || 
+                     "Failed to create walk-in booking.";
+      toast.error(errMsg);
     } finally {
       setIsSaving(false);
     }

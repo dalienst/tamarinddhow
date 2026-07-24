@@ -34,6 +34,22 @@ export default function ScheduleListPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // New Schedule form state
+  const [selectedDhow, setSelectedDhow] = useState("");
+  const [date, setDate] = useState("");
+  const [mealType, setMealType] = useState<MealType>("sunset_cruise");
+  const [departureTime, setDepartureTime] = useState("18:30");
+  const [returnTime, setReturnTime] = useState("22:30");
+  const [pricePerPerson, setPricePerPerson] = useState("5500");
+  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (dhows.length > 0 && !selectedDhow) {
+      setSelectedDhow(dhows[0].id);
+    }
+  }, [dhows, selectedDhow]);
+
   if (loadingSchedules || loadingDhows) {
     return (
       <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
@@ -51,22 +67,6 @@ export default function ScheduleListPage() {
       </div>
     );
   }
-
-  // New Schedule form state
-  const [selectedDhow, setSelectedDhow] = useState("");
-  const [date, setDate] = useState("");
-  const [mealType, setMealType] = useState<MealType>("sunset_cruise");
-  const [departureTime, setDepartureTime] = useState("18:30");
-  const [returnTime, setReturnTime] = useState("22:30");
-  const [pricePerPerson, setPricePerPerson] = useState("5500");
-  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
-  const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    if (dhows.length > 0 && !selectedDhow) {
-      setSelectedDhow(dhows[0].id);
-    }
-  }, [dhows, selectedDhow]);
 
   const handleCreateSchedule = async (e: React.FormEvent) => {
     e.preventDefault();

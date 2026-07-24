@@ -65,14 +65,8 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Header & Actions */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-slate-800">Dynamic Table Configuration</h2>
-          <p className="text-sm text-slate-500">
-            Configure tables for this sailing & assign guest bookings.
-          </p>
-        </div>
-        {!disabled && (
+      {!disabled && (
+        <div className="flex justify-end">
           <button
             onClick={() => setIsCreating(!isCreating)}
             className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm"
@@ -80,8 +74,8 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
             <Plus className="w-4 h-4" />
             {isCreating ? "Cancel" : "Add Table"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create Table Form */}
       {isCreating && (

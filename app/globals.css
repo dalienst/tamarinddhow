@@ -1,4 +1,21 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/GoogleSans-VariableFont.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Google Sans';
+  src: url('/fonts/GoogleSans-Italic.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
 
 :root {
   --background: #c7cdff;
@@ -26,9 +43,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
-
+  --font-sans: 'Google Sans', sans-serif;
   /* Adding custom colors */
   --color-brand-50: var(--color-brand-50);
   --color-brand-100: var(--color-brand-100);
@@ -45,4 +60,49 @@
   --color-primary: var(--color-brand-700);
   --color-primary-hover: var(--color-brand-800);
   --color-secondary: var(--color-brand-400);
+
+  /* Weight Constraints (not beyond font-semibold) */
+  --font-weight-bold: 600;
+  --font-weight-extrabold: 600;
+  --font-weight-black: 600;
+
+  /* Size Constraints (not beyond text-xl) */
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.25rem;
+  --text-3xl--line-height: 1.75rem;
+  --text-4xl: 1.25rem;
+  --text-4xl--line-height: 1.75rem;
+  --text-5xl: 1.25rem;
+  --text-5xl--line-height: 1.75rem;
+  --text-6xl: 1.25rem;
+  --text-6xl--line-height: 1.75rem;
+  --text-7xl: 1.25rem;
+  --text-7xl--line-height: 1.75rem;
+  --text-8xl: 1.25rem;
+  --text-8xl--line-height: 1.75rem;
+  --text-9xl: 1.25rem;
+  --text-9xl--line-height: 1.75rem;
+
+  /* Border Radius Constraints (not beyond rounded, which is 0.25rem) */
+  --radius-md: 0.25rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.25rem;
+  --radius-2xl: 0.25rem;
+  --radius-3xl: 0.25rem;
+  --radius-4xl: 0.25rem;
+  --radius-full: 0.25rem;
+
+  /* Shadow Constraints (not beyond shadow) */
+  --shadow-md: var(--shadow);
+  --shadow-lg: var(--shadow);
+  --shadow-xl: var(--shadow);
+  --shadow-2xl: var(--shadow);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
 }

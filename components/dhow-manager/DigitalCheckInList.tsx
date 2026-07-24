@@ -18,17 +18,24 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   onStatusChange,
 }) => {
   const [search, setSearch] = useState("");
-  const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>(() => {
+  const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>({});
+
+  React.useEffect(() => {
     const initial: Record<string, CheckInStatus> = {};
     bookings.forEach((b) => {
-      initial[b.reference] = b.check_in_status || "pending";
+      let statusVal: CheckInStatus = "pending";
+      if (b.status === "completed") {
+        statusVal = "checked_in";
+      } else if (b.status === "no_show") {
+        statusVal = "no_show";
+      }
+      initial[b.reference] = statusVal;
     });
-    return initial;
-  });
+    setCheckInMap(initial);
+  }, [bookings]);
 
   const handleCheckInToggle = (reference: string, newStatus: CheckInStatus) => {
     setCheckInMap((prev) => ({ ...prev, [reference]: newStatus }));
-    toast.success(`Booking ${reference} set to ${newStatus.replace("_", " ")}`);
     if (onStatusChange) {
       onStatusChange(reference, newStatus);
     }

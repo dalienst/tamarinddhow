@@ -52,6 +52,19 @@ export const createBooking = async (
   return response.data;
 };
 
+export const updateBooking = async (
+  reference: string,
+  data: Partial<Booking>,
+  token: string
+): Promise<Booking> => {
+  const response: AxiosResponse<Booking> = await apiActions.patch(
+    `/api/v1/bookings/${reference}/`,
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
 export const cancelBooking = async (
   reference: string,
   token: string

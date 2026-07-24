@@ -26,9 +26,11 @@ export default function FinancialControlPage() {
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
   const [mpesaRef, setMpesaRef] = useState("");
   const [processNotes, setProcessNotes] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleProcess = async (statusChoice: "completed" | "rejected") => {
     if (!selectedRefund) return;
+    setIsSaving(true);
     try {
       await processRefund(
         selectedRefund.reference,
@@ -45,6 +47,8 @@ export default function FinancialControlPage() {
       refetchEscrows();
     } catch (err) {
       toast.error("Failed to process refund.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -184,10 +188,11 @@ export default function FinancialControlPage() {
               <label className="block text-xs font-semibold text-slate-700 mb-1">M-Pesa B2C / Bank Ref Number</label>
               <input
                 type="text"
+                disabled={isSaving}
                 placeholder="e.g. QX98765432"
                 value={mpesaRef}
                 onChange={(e) => setMpesaRef(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500/20"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
               />
             </div>
 
@@ -195,9 +200,10 @@ export default function FinancialControlPage() {
               <label className="block text-xs font-semibold text-slate-700 mb-1">Processing Notes</label>
               <textarea
                 placeholder="Accounts notes..."
+                disabled={isSaving}
                 value={processNotes}
                 onChange={(e) => setProcessNotes(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500/20"
+                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                 rows={2}
               />
             </div>
@@ -205,20 +211,29 @@ export default function FinancialControlPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setSelectedRefund(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg"
+                disabled={isSaving}
+                className="px-4 py-2 bg-slate-100 text-slate-700 text-sm font-semibold rounded-lg disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleProcess("rejected")}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg"
+                disabled={isSaving}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
+                {isSaving && (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+                )}
                 Reject Refund
               </button>
               <button
                 onClick={() => handleProcess("completed")}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg"
+                disabled={isSaving}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-lg flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
               >
+                {isSaving && (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+                )}
                 Approve & Complete
               </button>
             </div>

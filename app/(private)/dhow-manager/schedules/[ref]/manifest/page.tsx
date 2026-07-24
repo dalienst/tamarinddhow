@@ -5,18 +5,23 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useFetchScheduleDetail } from "@/hooks/vessels/actions";
 import { useFetchBookings } from "@/hooks/bookings/actions";
+import { updateBooking } from "@/services/bookings";
+import { useSession } from "next-auth/react";
 import { Booking } from "@/types/booking";
 import { DigitalCheckInList } from "@/components/dhow-manager/DigitalCheckInList";
-import { ArrowLeft, Ship, Calendar } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ManifestPage() {
   const params = useParams();
   const scheduleRef = params.ref as string;
 
+  const { data: session } = useSession();
+  const token = session?.user?.token || "";
+
   // Query Hooks
-  const { data: schedule, isLoading: loadingSchedule } = useFetchScheduleDetail(scheduleRef);
-  const { data: bookingsData, isLoading: loadingBookings } = useFetchBookings(
+  const { data: schedule } = useFetchScheduleDetail(scheduleRef);
+  const { data: bookingsData, refetch: refetchBookings } = useFetchBookings(
     schedule?.id ? { schedule: schedule.id } : undefined
   );
 
@@ -28,8 +33,25 @@ export default function ManifestPage() {
     }
   }, [bookingsData]);
 
+  const handleStatusChange = async (ref: string, newCheckInStatus: "pending" | "checked_in" | "no_show") => {
+    let backendStatus: "confirmed" | "completed" | "no_show" = "confirmed";
+    if (newCheckInStatus === "checked_in") {
+      backendStatus = "completed";
+    } else if (newCheckInStatus === "no_show") {
+      backendStatus = "no_show";
+    }
+
+    try {
+      await updateBooking(ref, { status: backendStatus }, token);
+      toast.success(`Booking ${ref} set to ${newCheckInStatus.replace("_", " ")}`);
+      refetchBookings();
+    } catch (err) {
+      toast.error("Failed to update status in the database.");
+    }
+  };
+
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
       {/* Top Breadcrumb Header */}
       <div className="flex items-center gap-3">
         <Link
@@ -41,8 +63,8 @@ export default function ManifestPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Daily Sailing Manifest & Check-In</h1>
           {schedule && (
-            <p className="text-sm text-slate-500">
-              {schedule.dhow_name} | {schedule.date} ({schedule.meal_type_display}) | {schedule.departure_time}
+            <p className="text-sm text-slate-500 font-medium">
+              {schedule.dhow_name} | {schedule.date} ({schedule.meal_type_display}) | {schedule.departure_time.substring(0,5)} - {schedule.return_time.substring(0,5)}
             </p>
           )}
         </div>
@@ -52,11 +74,7 @@ export default function ManifestPage() {
       <DigitalCheckInList
         bookings={bookings}
         scheduleRef={scheduleRef}
-        onStatusChange={(ref, newStatus) => {
-          setBookings((prev) =>
-            prev.map((b) => (b.reference === ref ? { ...b, check_in_status: newStatus } : b))
-          );
-        }}
+        onStatusChange={handleStatusChange}
       />
     </div>
   );

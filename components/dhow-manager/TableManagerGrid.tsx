@@ -11,6 +11,7 @@ interface TableManagerGridProps {
   bookings: Booking[];
   onAssignTable: (tableId: string, bookingId: string | null) => Promise<void>;
   onCreateTable: (tableNumber: string, capacity: number, description: string) => Promise<void>;
+  disabled?: boolean;
 }
 
 export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
@@ -18,6 +19,7 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
   bookings,
   onAssignTable,
   onCreateTable,
+  disabled = false,
 }) => {
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [selectedBookingId, setSelectedBookingId] = useState<string>("");
@@ -70,13 +72,15 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
             Configure tables for this sailing & assign guest bookings.
           </p>
         </div>
-        <button
-          onClick={() => setIsCreating(!isCreating)}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm"
-        >
-          <Plus className="w-4 h-4" />
-          {isCreating ? "Cancel" : "Add Table"}
-        </button>
+        {!disabled && (
+          <button
+            onClick={() => setIsCreating(!isCreating)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg text-sm transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            {isCreating ? "Cancel" : "Add Table"}
+          </button>
+        )}
       </div>
 
       {/* Create Table Form */}
@@ -133,15 +137,18 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
             <div
               key={tbl.id}
               onClick={() => {
+                if (disabled) return;
                 setSelectedTable(tbl);
                 setSelectedBookingId(tbl.assigned_to || "");
               }}
-              className={`cursor-pointer border rounded-xl p-4 transition-all ${
+              className={`border rounded-xl p-4 transition-all ${
+                disabled ? "cursor-not-allowed opacity-75" : "cursor-pointer"
+              } ${
                 selectedTable?.id === tbl.id
                   ? "ring-2 ring-amber-500 border-amber-500 bg-amber-50/30"
                   : isAssigned
-                  ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-300"
-                  : "border-slate-200 bg-white hover:border-slate-300"
+                  ? "border-emerald-200 bg-emerald-50/40 hover:border-emerald-350"
+                  : "border-slate-200 bg-white hover:border-slate-350"
               }`}
             >
               <div className="flex items-center justify-between mb-2">

@@ -149,7 +149,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       {/* Guest Contact Details */}
       <div className="space-y-4 pt-4 border-t border-slate-100">
         <h3 className="font-bold text-slate-800 text-sm">Guest Contact Details</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
             <input
@@ -191,7 +191,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       {/* Booking Details & Preferences */}
       <div className="space-y-4 pt-4 border-t border-slate-100">
         <h3 className="font-bold text-slate-800 text-sm">Reservation Preferences</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">Party Size (Number of Guests)</label>
             <input

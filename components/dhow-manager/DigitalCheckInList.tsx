@@ -10,12 +10,14 @@ interface DigitalCheckInListProps {
   bookings: Booking[];
   scheduleRef: string;
   onStatusChange?: (bookingRef: string, newCheckInStatus: CheckInStatus) => void;
+  disabled?: boolean;
 }
 
 export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   bookings,
   scheduleRef,
   onStatusChange,
+  disabled = false,
 }) => {
   const [search, setSearch] = useState("");
   const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>({});
@@ -154,36 +156,39 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleCheckInToggle(b.reference, "checked_in")}
-                          className={`p-1.5 rounded-lg border transition-all ${
+                          disabled={disabled}
+                          className={`p-1.5 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             currentStatus === "checked_in"
                               ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
                               : "bg-white text-slate-400 border-slate-200 hover:text-emerald-600 hover:bg-emerald-50"
                           }`}
-                          title="Mark Checked In"
+                          title={disabled ? "Sailing checklist is closed" : "Mark Checked In"}
                         >
                           <CheckCircle2 className="w-5 h-5" />
                         </button>
 
                         <button
                           onClick={() => handleCheckInToggle(b.reference, "pending")}
-                          className={`p-1.5 rounded-lg border transition-all ${
+                          disabled={disabled}
+                          className={`p-1.5 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             currentStatus === "pending"
                               ? "bg-amber-500 text-white border-amber-600 shadow-sm"
                               : "bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50"
                           }`}
-                          title="Mark Pending"
+                          title={disabled ? "Sailing checklist is closed" : "Mark Pending"}
                         >
                           <Clock className="w-5 h-5" />
                         </button>
 
                         <button
                           onClick={() => handleCheckInToggle(b.reference, "no_show")}
-                          className={`p-1.5 rounded-lg border transition-all ${
+                          disabled={disabled}
+                          className={`p-1.5 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${
                             currentStatus === "no_show"
                               ? "bg-rose-500 text-white border-rose-600 shadow-sm"
                               : "bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
                           }`}
-                          title="Mark No Show"
+                          title={disabled ? "Sailing checklist is closed" : "Mark No Show"}
                         >
                           <XCircle className="w-5 h-5" />
                         </button>

@@ -61,7 +61,18 @@ export default function DynamicTablesPage() {
   };
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+      {schedule?.status === "completed" && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-950 px-5 py-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
+          <span className="p-1 bg-rose-100 text-rose-800 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </span>
+          <div className="text-xs font-semibold">
+            Seating Layout Locked: The dhow has completed boarding and has sailed. Table seats assignment cannot be modified.
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Link
           href="/dhow-manager/schedules"
@@ -72,7 +83,7 @@ export default function DynamicTablesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Dynamic Seating & Table Layout</h1>
           {schedule && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 font-medium">
               {schedule.dhow_name} | {schedule.date} ({schedule.meal_type_display})
             </p>
           )}
@@ -84,6 +95,7 @@ export default function DynamicTablesPage() {
         bookings={bookings}
         onAssignTable={handleAssignTable}
         onCreateTable={handleCreateTable}
+        disabled={schedule?.status === "completed"}
       />
     </div>
   );

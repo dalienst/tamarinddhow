@@ -187,6 +187,19 @@ export const cancelSchedule = async (
   return response.data;
 };
 
+export const updateSchedule = async (
+  reference: string,
+  data: Partial<Schedule>,
+  token: string
+): Promise<Schedule> => {
+  const response: AxiosResponse<Schedule> = await apiActions.patch(
+    `/api/v1/schedules/${reference}/`,
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
 /* TABLES */
 export const getTables = async (scheduleId?: string, headers?: any): Promise<PaginatedResponse<Table>> => {
   const params = scheduleId ? { schedule: scheduleId } : {};

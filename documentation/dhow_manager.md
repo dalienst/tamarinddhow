@@ -12,7 +12,7 @@ This guide provides deep technical and operational guidelines for the **Dhow Man
 ---
 
 ## 2. Sailing Schedules & Quota Thresholds
-*   **Generation:** Managers generate single dates or bulk calendar slots for cruises. Each sailing specifies meal types (Lunch or Sunset Cruise), departure/return times, individual price parameters, and exclusive flat fees.
+*   **Generation:** Managers generate single dates or bulk calendar slots for cruises. Each sailing specifies meal types (Lunch or Sunset Cruise), departure/return times, individual price parameters (with separate rates for adults and children), and exclusive flat fees. Past dates are automatically blocked from selection in the UI.
 *   **Voyage Status Lifecycle:**
     1.  `Scheduled`: Voyage created.
     2.  `Confirmed`: Confirmed to sail (normally once passenger count exceeds the vessel's `min_quota`).
@@ -23,19 +23,18 @@ This guide provides deep technical and operational guidelines for the **Dhow Man
 ---
 
 ## 3. Walk-In Guest Registration
-*   **Form Location:** Managed modularly under `forms/walk-in/WalkInBookingForm.tsx`.
-*   **Payment Collection Bypasses:** Walk-in payments bypass the online digital escrows. Managers collect cash, card, or manual M-Pesa. Submitting writes immediate payment receipts into the database.
-*   **Cancellation Options:** Guests must explicitly select a cancellation preference in case the cruise does not launch:
-    *   `Refund`: Returns cash/credit.
-    *   `Reschedule`: Transfers booking to a later date.
+*   **Form Location:** Accessible via the **Register Walk-In** modal form on the full-width Walk-In Bookings page.
+*   **Roster & Pricing Selection:** Supports inputting adult and child counts separately. It displays a dynamic total pricing breakdown based on the voyage's adult/child rates and automatically generates placeholder guest roster records for the entire group. Past dates are hidden from selection.
+*   **Payment Collection Bypasses:** Walk-in payments bypass online digital escrows. Managers collect cash, card, or manual M-Pesa. Submitting writes immediate payment receipts into the database.
+*   **Cancellation & Rescheduling:** Guests specify cancellation preferences (`Refund` or `Reschedule`). Managers can also reschedule bookings directly to upcoming open voyages via a quick-action modal in the log grid.
 
 ---
 
 ## 4. Digital Manifest & Check-In
-*   **Manifest Checklist:** Located under `/schedules/[ref]/manifest`. This page groups all confirmed guests (walk-ins + online bookings) for check-in.
-*   **Digital Toggles:** The boarding crew toggles passenger status as they step aboard:
-    *   *Checked In:* Patches booking status to `"completed"`.
-    *   *No Show:* Patches booking status to `"no_show"`.
+*   **Manifest Checklist:** Located under `/schedules/[ref]/manifest`. This page groups all confirmed bookings for check-in.
+*   **Table Allocations:** Seating charts can be assigned directly from the manifest row using a dropdown containing all available tables.
+*   **Granular Plate Attendance:** Displays an expandable plate roster under each booking, allowing the crew to toggle check-in or no-show status for each guest individually. This ensures food plates are accounted for precisely when part of a group does not attend.
+*   **Digital Toggles:** Crew can toggle check-ins at the booking level, which automatically updates the entire guest list roster, or modify specific guest statuses.
 *   **Marking Sailed:** Clicking the **Mark Dhow as Sailed** button updates the voyage status to `"completed"`. This action permanently **locks the checklist and table seats charts** from further edits.
 
 ---

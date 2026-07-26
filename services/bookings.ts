@@ -118,6 +118,19 @@ export const createBookingGuest = async (
   return response.data;
 };
 
+export const updateBookingGuest = async (
+  id: string,
+  data: Partial<BookingGuest>,
+  token: string
+): Promise<BookingGuest> => {
+  const response: AxiosResponse<BookingGuest> = await apiActions.patch(
+    `/api/v1/booking-guests/${id}/`,
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
 /* BOOKING ADDONS */
 export const getBookingAddOns = async (
   headers?: any,

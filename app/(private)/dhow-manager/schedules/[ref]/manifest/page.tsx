@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useFetchScheduleDetail } from "@/hooks/vessels/actions";
+import { useFetchScheduleDetail, useFetchTables } from "@/hooks/vessels/actions";
 import { useFetchBookings } from "@/hooks/bookings/actions";
 import { updateBooking } from "@/services/bookings";
 import { updateSchedule } from "@/services/vessels";
@@ -26,6 +26,7 @@ export default function ManifestPage() {
   const { data: bookingsData, isLoading: loadingBookings, refetch: refetchBookings } = useFetchBookings(
     schedule?.id ? { schedule: schedule.id } : undefined
   );
+  const { data: tablesData } = useFetchTables(schedule?.id);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
@@ -55,6 +56,8 @@ export default function ManifestPage() {
     );
   }
 
+  const isClosed = schedule?.status === "completed" || schedule?.status === "cancelled";
+
   const handleStatusChange = async (ref: string, newCheckInStatus: "pending" | "checked_in" | "no_show") => {
     if (schedule?.status === "completed") {
       toast.error("This voyage has already sailed. Checklist is locked.");
@@ -70,24 +73,22 @@ export default function ManifestPage() {
 
     try {
       await updateBooking(ref, { status: backendStatus }, token);
-      toast.success(`Booking ${ref} set to ${newCheckInStatus.replace("_", " ")}`);
+      toast.success("Guest check-in status updated.");
       refetchBookings();
     } catch (err) {
-      toast.error("Failed to update status in the database.");
+      toast.error("Failed to update check-in status.");
     }
   };
 
   const handleCloseChecklist = async () => {
-    if (!confirm("Are you sure you want to mark this dhow as SAILED? This will lock the checklist and seating charts permanently.")) {
-      return;
-    }
+    if (!schedule) return;
+    if (!confirm("Are you sure you want to mark this sailing as sailed? This will lock the checklist and confirm the passenger count.")) return;
 
     setIsClosingChecklist(true);
     try {
       await updateSchedule(scheduleRef, { status: "completed" }, token);
-      toast.success("Sailing checklist closed. Dhow has sailed!");
+      toast.success("Voyage checklist successfully closed.");
       refetchSchedule();
-      refetchBookings();
     } catch (err) {
       toast.error("Failed to close sailing checklist.");
     } finally {
@@ -95,10 +96,8 @@ export default function ManifestPage() {
     }
   };
 
-  const isClosed = schedule?.status === "completed";
-
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Closed Banner Warning */}
       {isClosed && (
         <div className="bg-rose-50 border border-rose-200 text-rose-950 px-5 py-4 rounded-2xl flex items-center gap-3.5 shadow-sm">
@@ -152,6 +151,9 @@ export default function ManifestPage() {
       {/* Manifest List Component */}
       <DigitalCheckInList
         bookings={bookings}
+        tables={tablesData?.results || []}
+        token={token}
+        onRefetch={refetchBookings}
         scheduleRef={scheduleRef}
         onStatusChange={handleStatusChange}
         disabled={isClosed}

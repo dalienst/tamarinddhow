@@ -53,6 +53,7 @@ export default function ScheduleCenterPage() {
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("22:30");
   const [pricePerPerson, setPricePerPerson] = useState("5500");
+  const [pricePerChild, setPricePerChild] = useState("2750");
   const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
   const [notes, setNotes] = useState("");
 
@@ -100,6 +101,7 @@ export default function ScheduleCenterPage() {
         departure_time: departureTime,
         return_time: returnTime,
         price_per_person: parseFloat(pricePerPerson),
+        price_per_child: parseFloat(pricePerChild),
         exclusive_flat_fee: parseFloat(exclusiveFlatFee),
         status: "scheduled",
         is_open: true,
@@ -487,6 +489,7 @@ export default function ScheduleCenterPage() {
                   <input
                     type="date"
                     required
+                    min={new Date().toISOString().split("T")[0]}
                     disabled={isSaving}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -537,7 +540,7 @@ export default function ScheduleCenterPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-600 uppercase">Price per Person (KES)</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Price per Adult (KES)</label>
                   <input
                     type="number"
                     required
@@ -548,16 +551,28 @@ export default function ScheduleCenterPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-xs font-bold text-slate-600 uppercase">Exclusive Flat Fee (KES)</label>
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Price per Child (KES)</label>
                   <input
                     type="number"
                     required
                     disabled={isSaving}
-                    value={exclusiveFlatFee}
-                    onChange={(e) => setExclusiveFlatFee(e.target.value)}
+                    value={pricePerChild}
+                    onChange={(e) => setPricePerChild(e.target.value)}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Exclusive Flat Fee (KES)</label>
+                <input
+                  type="number"
+                  required
+                  disabled={isSaving}
+                  value={exclusiveFlatFee}
+                  onChange={(e) => setExclusiveFlatFee(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                />
               </div>
 
               <div className="space-y-1">

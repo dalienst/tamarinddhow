@@ -16,8 +16,12 @@ import {
   List as ListIcon, 
   X, 
   Clock,
-  Loader2
+  Loader2,
+  ChevronDown,
+  UserPlus,
+  MenuSquare
 } from "lucide-react";
+import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
 import toast from "react-hot-toast";
 
 export default function ScheduleListPage() {
@@ -51,6 +55,9 @@ export default function ScheduleListPage() {
     ref: string;
   }>({ isOpen: false, ref: "" });
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  const [openMenuRef, setOpenMenuRef] = useState<string | null>(null);
+  const [isWalkInOpen, setIsWalkInOpen] = useState(false);
+  const [selectedScheduleForWalkIn, setSelectedScheduleForWalkIn] = useState<string | null>(null);
 
   useEffect(() => {
     if (dhows.length > 0 && !selectedDhow) {
@@ -220,77 +227,105 @@ export default function ScheduleListPage() {
                   </div>
                 </div>
 
-                {/* Actions Bar */}
-                <div className="flex items-center gap-2 flex-wrap md:flex-nowrap">
-                  <Link
-                    href={`/dhow-manager/schedules/${s.reference}/manifest`}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-50 text-amber-800 hover:bg-amber-100 font-bold text-xs rounded-xl border border-amber-200 transition-colors"
-                  >
-                    Manifest Checklist
-                  </Link>
-
-                  <Link
-                    href={`/dhow-manager/schedules/${s.reference}/tables`}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 font-bold text-xs rounded-xl border border-indigo-200 transition-colors"
-                  >
-                    Seating Layout
-                  </Link>
-
-                  {s.is_open ? (
+                {/* Actions Bar Popover */}
+                <div className="flex items-center gap-2 relative">
+                  <div className="relative">
                     <button
-                      disabled={actionLoading[`${s.reference}-close`]}
-                      onClick={() => handleAction(s.reference, "close")}
-                      className="flex items-center justify-center min-w-[110px] px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors disabled:opacity-50"
+                      onClick={() => setOpenMenuRef(openMenuRef === s.reference ? null : s.reference)}
+                      className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors shadow-sm"
                     >
-                      {actionLoading[`${s.reference}-close`] ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        "Close Bookings"
-                      )}
+                      Actions <ChevronDown className="w-3.5 h-3.5" />
                     </button>
-                  ) : (
-                    <button
-                      disabled={actionLoading[`${s.reference}-open`]}
-                      onClick={() => handleAction(s.reference, "open")}
-                      className="flex items-center justify-center min-w-[110px] px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl border border-emerald-200 transition-colors disabled:opacity-50"
-                    >
-                      {actionLoading[`${s.reference}-open`] ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-800" />
-                      ) : (
-                        "Open Bookings"
-                      )}
-                    </button>
-                  )}
 
-                  {s.status !== "confirmed" && s.status !== "cancelled" && s.status !== "completed" && (
-                    <button
-                      disabled={actionLoading[`${s.reference}-confirm`]}
-                      onClick={() => handleAction(s.reference, "confirm")}
-                      className="flex items-center justify-center min-w-[110px] px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/10 disabled:opacity-50"
-                      title="Confirm sailing & release escrow funds to finance"
-                    >
-                      {actionLoading[`${s.reference}-confirm`] ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                      ) : (
-                        "Confirm Sailing"
-                      )}
-                    </button>
-                  )}
+                    {openMenuRef === s.reference && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-10" 
+                          onClick={() => setOpenMenuRef(null)} 
+                        />
+                        <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fadeIn">
+                          <Link
+                            href={`/dhow-manager/schedules/${s.reference}/manifest`}
+                            onClick={() => setOpenMenuRef(null)}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                          >
+                            Manifest Checklist
+                          </Link>
 
-                  {s.status !== "cancelled" && s.status !== "completed" && (
-                    <button
-                      disabled={actionLoading[`${s.reference}-cancel`]}
-                      onClick={() => handleAction(s.reference, "cancel")}
-                      className="flex items-center justify-center min-w-[110px] px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-rose-600/10 disabled:opacity-50"
-                      title="Cancel sailing & trigger guest refund/reschedule"
-                    >
-                      {actionLoading[`${s.reference}-cancel`] ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-                      ) : (
-                        "Cancel Sailing"
-                      )}
-                    </button>
-                  )}
+                          <Link
+                            href={`/dhow-manager/schedules/${s.reference}/tables`}
+                            onClick={() => setOpenMenuRef(null)}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                          >
+                            Seating Layout
+                          </Link>
+
+                          <button
+                            onClick={() => {
+                              setSelectedScheduleForWalkIn(s.id);
+                              setIsWalkInOpen(true);
+                              setOpenMenuRef(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                          >
+                            Book Walk-In
+                          </button>
+
+                          <div className="border-t border-slate-100 my-1.5" />
+
+                          {s.is_open ? (
+                            <button
+                              disabled={actionLoading[`${s.reference}-close`]}
+                              onClick={() => {
+                                handleAction(s.reference, "close");
+                                setOpenMenuRef(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            >
+                              Close Bookings
+                            </button>
+                          ) : (
+                            <button
+                              disabled={actionLoading[`${s.reference}-open`]}
+                              onClick={() => {
+                                handleAction(s.reference, "open");
+                                setOpenMenuRef(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            >
+                              Open Bookings
+                            </button>
+                          )}
+
+                          {s.status !== "confirmed" && s.status !== "cancelled" && s.status !== "completed" && (
+                            <button
+                              disabled={actionLoading[`${s.reference}-confirm`]}
+                              onClick={() => {
+                                handleAction(s.reference, "confirm");
+                                setOpenMenuRef(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            >
+                              Confirm Sailing
+                            </button>
+                          )}
+
+                          {s.status !== "cancelled" && s.status !== "completed" && (
+                            <button
+                              disabled={actionLoading[`${s.reference}-cancel`]}
+                              onClick={() => {
+                                handleAction(s.reference, "cancel");
+                                setOpenMenuRef(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                            >
+                              Cancel Sailing
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -493,6 +528,38 @@ export default function ScheduleListPage() {
         }}
         onCancel={() => setCancelModalState({ isOpen: false, ref: "" })}
       />
+
+      {/* Walk-in Booking Modal */}
+      {isWalkInOpen && selectedScheduleForWalkIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-4 border border-slate-100 animate-scaleUp relative">
+            <button
+              onClick={() => {
+                setIsWalkInOpen(false);
+                setSelectedScheduleForWalkIn(null);
+              }}
+              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <UserPlus className="w-6 h-6 text-amber-600" />
+              <h2 className="text-xl font-bold text-slate-800">Register Walk-In Booking</h2>
+            </div>
+            <div className="pt-2">
+              <WalkInBookingForm 
+                token={token} 
+                initialScheduleId={selectedScheduleForWalkIn}
+                onSuccess={() => {
+                  setIsWalkInOpen(false);
+                  setSelectedScheduleForWalkIn(null);
+                  refetchSchedules();
+                }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

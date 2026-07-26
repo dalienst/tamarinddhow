@@ -10,9 +10,10 @@ import toast from "react-hot-toast";
 interface WalkInBookingFormProps {
   token: string;
   onSuccess: () => void;
+  initialScheduleId?: string;
 }
 
-export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFormProps) {
+export default function WalkInBookingForm({ token, onSuccess, initialScheduleId }: WalkInBookingFormProps) {
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
 
@@ -36,10 +37,12 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (upcomingSchedules.length > 0 && !selectedScheduleId) {
+    if (initialScheduleId) {
+      setSelectedScheduleId(initialScheduleId);
+    } else if (upcomingSchedules.length > 0 && !selectedScheduleId) {
       setSelectedScheduleId(upcomingSchedules[0].id);
     }
-  }, [upcomingSchedules, selectedScheduleId]);
+  }, [upcomingSchedules, selectedScheduleId, initialScheduleId]);
 
   // Compute pricing dynamically
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);

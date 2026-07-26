@@ -15,12 +15,14 @@ import {
   RefreshCw, 
   X, 
   CalendarDays,
-  MenuSquare
+  MenuSquare,
+  Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
 import { Booking } from "@/types/booking";
 import { SkeletonCard } from "@/components/common/Skeleton";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 export default function WalkInBookingPage() {
   const { data: session } = useSession();
@@ -31,6 +33,8 @@ export default function WalkInBookingPage() {
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
   const [selectedNewScheduleId, setSelectedNewScheduleId] = useState("");
   const [isSavingReschedule, setIsSavingReschedule] = useState(false);
+  const [cancelTargetRef, setCancelTargetRef] = useState<string | null>(null);
+  const [isCancellingRef, setIsCancellingRef] = useState<string | null>(null);
 
   // Query Hooks
   const { data: walkInsData, refetch: refetchWalkIns, isLoading: loadingWalkins } = useFetchBookings({
@@ -42,13 +46,16 @@ export default function WalkInBookingPage() {
   const openSchedules = schedulesData?.results || [];
 
   const handleCancelBooking = async (reference: string) => {
-    if (!confirm(`Are you sure you want to cancel booking ${reference}?`)) return;
+    setIsCancellingRef(reference);
     try {
       await cancelBooking(reference, token);
       toast.success("Booking cancelled successfully.");
       refetchWalkIns();
     } catch (err) {
       toast.error("Failed to cancel booking.");
+    } finally {
+      setIsCancellingRef(null);
+      setCancelTargetRef(null);
     }
   };
 
@@ -183,11 +190,16 @@ export default function WalkInBookingPage() {
                           Reschedule
                         </button>
                         <button
-                          onClick={() => handleCancelBooking(booking.reference)}
-                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100"
+                          disabled={isCancellingRef === booking.reference}
+                          onClick={() => setCancelTargetRef(booking.reference)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
                           title="Cancel Booking"
                         >
-                          <XCircle className="w-4 h-4" />
+                          {isCancellingRef === booking.reference ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     )}
@@ -309,6 +321,20 @@ export default function WalkInBookingPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={cancelTargetRef !== null}
+        title="Cancel Walk-In Booking"
+        message={`Are you sure you want to cancel booking ${cancelTargetRef}? This action will permanently release table allocations.`}
+        confirmText="Cancel Booking"
+        cancelText="Go Back"
+        type="danger"
+        isLoading={isCancellingRef !== null && isCancellingRef === cancelTargetRef}
+        onConfirm={() => {
+          if (cancelTargetRef) handleCancelBooking(cancelTargetRef);
+        }}
+        onCancel={() => setCancelTargetRef(null)}
+      />
     </div>
   );
 }

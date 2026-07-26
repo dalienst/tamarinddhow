@@ -13,10 +13,13 @@ import {
   ChevronUp, 
   UserCheck, 
   UserX,
-  UtensilsCrossed
+  UtensilsCrossed,
+  X,
+  Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { assignBookingTable, updateBookingGuest } from "@/services/bookings";
+import { updateBookingGuest } from "@/services/bookings";
+import { assignTable } from "@/services/vessels";
 
 interface DigitalCheckInListProps {
   bookings: Booking[];
@@ -40,6 +43,8 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   const [search, setSearch] = useState("");
   const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>({});
   const [expandedRefs, setExpandedRefs] = useState<Record<string, boolean>>({});
+  const [processingTables, setProcessingTables] = useState<Record<string, boolean>>({});
+  const [processingGuests, setProcessingGuests] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const initial: Record<string, CheckInStatus> = {};
@@ -160,6 +165,11 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                 const isExpanded = !!expandedRefs[b.reference];
                 const checkedInGuests = b.booking_guests?.filter(g => g.status === "checked_in").length || 0;
                 
+                // Get all tables assigned to this specific booking ID
+                const assignedTables = tables.filter((t) => t.assigned_to === b.id);
+                const availableTables = tables.filter((t) => !t.assigned_to);
+                const isProcessing = !!processingTables[b.reference];
+
                 return (
                   <React.Fragment key={b.reference}>
                     <tr className="hover:bg-slate-50/80 transition-colors">
@@ -193,28 +203,79 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          disabled={disabled}
-                          value={b.table || ""}
-                          onChange={async (e) => {
-                            const val = e.target.value || null;
-                            try {
-                              await assignBookingTable(b.reference, val, token);
-                              toast.success(val ? "Table assigned successfully" : "Table cleared");
-                              onRefetch();
-                            } catch (err) {
-                              toast.error("Failed to assign table.");
-                            }
-                          }}
-                          className="px-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold bg-white cursor-pointer"
-                        >
-                          <option value="">Unallocated</option>
-                          {tables.map((t) => (
-                            <option key={t.id} value={t.id} disabled={t.assigned_to && t.assigned_to !== b.id}>
-                              Table {t.table_number} ({t.capacity} seats) {t.assigned_to && t.assigned_to !== b.id ? "— Occupied" : ""}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="space-y-2 max-w-[170px]">
+                          {/* List of currently assigned tables */}
+                          {assignedTables.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {assignedTables.map((t) => (
+                                <span 
+                                  key={t.id} 
+                                  className="inline-flex items-center gap-1 bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold px-2 py-0.5 rounded-lg"
+                                >
+                                  T{t.table_number}
+                                  <button
+                                    type="button"
+                                    disabled={disabled || isProcessing}
+                                    onClick={async () => {
+                                      setProcessingTables(prev => ({ ...prev, [b.reference]: true }));
+                                      try {
+                                        await assignTable(t.id, null, token);
+                                        toast.success(`Table ${t.table_number} cleared`);
+                                        onRefetch();
+                                      } catch (err) {
+                                        toast.error("Failed to remove table.");
+                                      } finally {
+                                        setProcessingTables(prev => ({ ...prev, [b.reference]: false }));
+                                      }
+                                    }}
+                                    className="text-slate-400 hover:text-slate-600 focus:outline-none disabled:opacity-40"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Allocation dropdown with loading indicators */}
+                          <div className="flex items-center gap-2">
+                            {isProcessing ? (
+                              <div className="flex items-center gap-1.5 text-xs text-amber-600 font-bold">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Syncing...</span>
+                              </div>
+                            ) : (
+                              <select
+                                disabled={disabled || isProcessing || availableTables.length === 0}
+                                value=""
+                                onChange={async (e) => {
+                                  const val = e.target.value;
+                                  if (!val) return;
+                                  setProcessingTables(prev => ({ ...prev, [b.reference]: true }));
+                                  const tObj = tables.find((t) => t.id === val);
+                                  try {
+                                    await assignTable(val, b.id, token);
+                                    toast.success(`Assigned Table ${tObj?.table_number}`);
+                                    onRefetch();
+                                  } catch (err) {
+                                    toast.error("Failed to allocate table.");
+                                  } finally {
+                                    setProcessingTables(prev => ({ ...prev, [b.reference]: false }));
+                                  }
+                                }}
+                                className="px-2 py-1 text-[11px] border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold bg-white cursor-pointer w-full"
+                              >
+                                <option value="">+ Allocate Table</option>
+                                {availableTables.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    Table {t.table_number} ({t.capacity} seats)
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        </div>
+
                         {b.table_request && (
                           <div className="text-[10px] text-amber-700 mt-1 italic leading-tight">
                             Req: "{b.table_request}"
@@ -289,89 +350,114 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                               </div>
                             ) : (
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                {b.booking_guests.map((g) => (
-                                  <div 
-                                    key={g.id} 
-                                    className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-xs transition-all hover:border-slate-300"
-                                  >
-                                    <div className="space-y-0.5">
-                                      <div className="text-xs font-extrabold text-slate-800">
-                                        {g.first_name} {g.last_name}
-                                        {g.is_primary && (
-                                          <span className="text-[8px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1.5">
-                                            Primary
-                                          </span>
-                                        )}
+                                {b.booking_guests.map((g) => {
+                                  const isGuestLoading = !!processingGuests[g.id];
+
+                                  return (
+                                    <div 
+                                      key={g.id} 
+                                      className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-xs transition-all hover:border-slate-300"
+                                    >
+                                      <div className="space-y-0.5">
+                                        <div className="text-xs font-extrabold text-slate-800">
+                                          {g.first_name} {g.last_name}
+                                          {g.is_primary && (
+                                            <span className="text-[8px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1.5">
+                                              Primary
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                          {g.email || g.phone || "No contact info"}
+                                        </div>
                                       </div>
-                                      <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                                        {g.email || g.phone || "No contact info"}
+                                      
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          disabled={disabled || isGuestLoading}
+                                          onClick={async () => {
+                                            setProcessingGuests(prev => ({ ...prev, [g.id]: true }));
+                                            try {
+                                              await updateBookingGuest(g.id, { status: "checked_in" }, token);
+                                              toast.success(`${g.first_name} marked checked in`);
+                                              onRefetch();
+                                            } catch (err) {
+                                              toast.error("Failed to update guest check-in.");
+                                            } finally {
+                                              setProcessingGuests(prev => ({ ...prev, [g.id]: false }));
+                                            }
+                                          }}
+                                          className={`p-1.5 rounded-lg border transition-all ${
+                                            g.status === "checked_in"
+                                              ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
+                                              : "bg-white text-slate-400 border-slate-200 hover:text-emerald-600 hover:bg-emerald-50"
+                                          }`}
+                                          title="Checked In (Plate Served)"
+                                        >
+                                          {isGuestLoading ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            <UserCheck className="w-3.5 h-3.5" />
+                                          )}
+                                        </button>
+                                        <button
+                                          disabled={disabled || isGuestLoading}
+                                          onClick={async () => {
+                                            setProcessingGuests(prev => ({ ...prev, [g.id]: true }));
+                                            try {
+                                              await updateBookingGuest(g.id, { status: "no_show" }, token);
+                                              toast.success(`${g.first_name} marked no-show`);
+                                              onRefetch();
+                                            } catch (err) {
+                                              toast.error("Failed to update guest check-in.");
+                                            } finally {
+                                              setProcessingGuests(prev => ({ ...prev, [g.id]: false }));
+                                            }
+                                          }}
+                                          className={`p-1.5 rounded-lg border transition-all ${
+                                            g.status === "no_show"
+                                              ? "bg-rose-500 text-white border-rose-600 shadow-sm"
+                                              : "bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
+                                          }`}
+                                          title="No Show (Plate Saved)"
+                                        >
+                                          {isGuestLoading ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            <UserX className="w-3.5 h-3.5" />
+                                          )}
+                                        </button>
+                                        <button
+                                          disabled={disabled || isGuestLoading}
+                                          onClick={async () => {
+                                            setProcessingGuests(prev => ({ ...prev, [g.id]: true }));
+                                            try {
+                                              await updateBookingGuest(g.id, { status: "pending" }, token);
+                                              toast.success(`${g.first_name} reset to pending`);
+                                              onRefetch();
+                                            } catch (err) {
+                                              toast.error("Failed to reset guest check-in.");
+                                            } finally {
+                                              setProcessingGuests(prev => ({ ...prev, [g.id]: false }));
+                                            }
+                                          }}
+                                          className={`p-1.5 rounded-lg border transition-all ${
+                                            g.status === "pending" || !g.status
+                                              ? "bg-amber-500 text-white border-amber-600 shadow-sm"
+                                              : "bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50"
+                                          }`}
+                                          title="Pending"
+                                        >
+                                          {isGuestLoading ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          ) : (
+                                            <Clock className="w-3.5 h-3.5" />
+                                          )}
+                                        </button>
                                       </div>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        disabled={disabled}
-                                        onClick={async () => {
-                                          try {
-                                            await updateBookingGuest(g.id, { status: "checked_in" }, token);
-                                            toast.success(`${g.first_name} marked checked in (plate served)`);
-                                            onRefetch();
-                                          } catch (err) {
-                                            toast.error("Failed to update guest check-in.");
-                                          }
-                                        }}
-                                        className={`p-1.5 rounded-lg border transition-all ${
-                                          g.status === "checked_in"
-                                            ? "bg-emerald-500 text-white border-emerald-600 shadow-sm"
-                                            : "bg-white text-slate-400 border-slate-200 hover:text-emerald-600 hover:bg-emerald-50"
-                                        }`}
-                                        title="Checked In (Plate Served)"
-                                      >
-                                        <UserCheck className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        disabled={disabled}
-                                        onClick={async () => {
-                                          try {
-                                            await updateBookingGuest(g.id, { status: "no_show" }, token);
-                                            toast.success(`${g.first_name} marked no-show (plate unused)`);
-                                            onRefetch();
-                                          } catch (err) {
-                                            toast.error("Failed to update guest check-in.");
-                                          }
-                                        }}
-                                        className={`p-1.5 rounded-lg border transition-all ${
-                                          g.status === "no_show"
-                                            ? "bg-rose-500 text-white border-rose-600 shadow-sm"
-                                            : "bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
-                                        }`}
-                                        title="No Show (Plate Saved)"
-                                      >
-                                        <UserX className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button
-                                        disabled={disabled}
-                                        onClick={async () => {
-                                          try {
-                                            await updateBookingGuest(g.id, { status: "pending" }, token);
-                                            toast.success(`${g.first_name} reset to pending`);
-                                            onRefetch();
-                                          } catch (err) {
-                                            toast.error("Failed to reset guest check-in.");
-                                          }
-                                        }}
-                                        className={`p-1.5 rounded-lg border transition-all ${
-                                          g.status === "pending" || !g.status
-                                            ? "bg-amber-500 text-white border-amber-600 shadow-sm"
-                                            : "bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50"
-                                        }`}
-                                        title="Pending"
-                                      >
-                                        <Clock className="w-3.5 h-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             )}
                           </div>

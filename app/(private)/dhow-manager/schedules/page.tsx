@@ -8,6 +8,7 @@ import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/common/Skeleton";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { 
   Calendar as CalendarIcon, 
   Ship, 
@@ -24,7 +25,8 @@ import {
   X, 
   Info,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -56,6 +58,11 @@ export default function ScheduleCenterPage() {
   const [pricePerChild, setPricePerChild] = useState("2750");
   const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
   const [notes, setNotes] = useState("");
+  const [cancelModalState, setCancelModalState] = useState<{
+    isOpen: boolean;
+    ref: string;
+  }>({ isOpen: false, ref: "" });
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (dhows.length > 0 && !selectedDhow) {
@@ -120,19 +127,23 @@ export default function ScheduleCenterPage() {
   };
 
   const handleAction = async (ref: string, action: "open" | "close" | "confirm" | "cancel") => {
+    if (action === "cancel") {
+      setCancelModalState({ isOpen: true, ref });
+      return;
+    }
+
+    const key = `${ref}-${action}`;
+    setActionLoading(prev => ({ ...prev, [key]: true }));
     try {
       if (action === "open") await openSchedule(ref, token);
       if (action === "close") await closeSchedule(ref, token);
       if (action === "confirm") await confirmSchedule(ref, token);
-      if (action === "cancel") {
-        const reason = prompt("Enter cancellation reason (e.g. Bad weather):", "Low quota / weather");
-        if (!reason) return;
-        await cancelSchedule(ref, reason, token);
-      }
       toast.success(`Schedule ${ref} updated!`);
       refetchSchedules();
     } catch (err) {
       toast.error(`Failed to ${action} schedule.`);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -409,37 +420,57 @@ export default function ScheduleCenterPage() {
                           <Table className="w-3.5 h-3.5" /> Seating
                         </Link>
 
-                        {s.is_open ? (
+                         {s.is_open ? (
                           <button
+                            disabled={actionLoading[`${s.reference}-close`]}
                             onClick={() => handleAction(s.reference, "close")}
-                            className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-all"
+                            className="flex items-center justify-center min-w-[50px] px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-all disabled:opacity-50"
                           >
-                            Close
+                            {actionLoading[`${s.reference}-close`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              "Close"
+                            )}
                           </button>
                         ) : (
                           <button
+                            disabled={actionLoading[`${s.reference}-open`]}
                             onClick={() => handleAction(s.reference, "open")}
-                            className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 transition-all"
+                            className="flex items-center justify-center min-w-[50px] px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 transition-all disabled:opacity-50"
                           >
-                            Open
+                            {actionLoading[`${s.reference}-open`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-800" />
+                            ) : (
+                              "Open"
+                            )}
                           </button>
                         )}
 
                         {s.status !== "confirmed" && s.status !== "cancelled" && (
                           <button
+                            disabled={actionLoading[`${s.reference}-confirm`]}
                             onClick={() => handleAction(s.reference, "confirm")}
-                            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all"
+                            className="flex items-center justify-center min-w-[60px] px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50"
                           >
-                            Confirm
+                            {actionLoading[`${s.reference}-confirm`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                            ) : (
+                              "Confirm"
+                            )}
                           </button>
                         )}
 
                         {s.status !== "cancelled" && (
                           <button
+                            disabled={actionLoading[`${s.reference}-cancel`]}
                             onClick={() => handleAction(s.reference, "cancel")}
-                            className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all"
+                            className="flex items-center justify-center min-w-[60px] px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-all disabled:opacity-50"
                           >
-                            Cancel
+                            {actionLoading[`${s.reference}-cancel`] ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                            ) : (
+                              "Cancel"
+                            )}
                           </button>
                         )}
                       </div>
@@ -614,6 +645,34 @@ export default function ScheduleCenterPage() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={cancelModalState.isOpen}
+        title="Cancel Sailing Voyage"
+        message="Please provide the reason for cancelling this sailing. This will trigger refunds/rescheduling logic for bookings."
+        confirmText="Cancel Voyage"
+        cancelText="Go Back"
+        type="danger"
+        placeholder="Enter cancellation reason..."
+        defaultValue="Low quota / weather"
+        isLoading={!!actionLoading[`${cancelModalState.ref}-cancel`]}
+        onConfirm={async (reason) => {
+          if (!reason) return;
+          const key = `${cancelModalState.ref}-cancel`;
+          setActionLoading(prev => ({ ...prev, [key]: true }));
+          try {
+            await cancelSchedule(cancelModalState.ref, reason, token);
+            toast.success(`Schedule ${cancelModalState.ref} cancelled successfully!`);
+            refetchSchedules();
+          } catch (err) {
+            toast.error("Failed to cancel schedule.");
+          } finally {
+            setActionLoading(prev => ({ ...prev, [key]: false }));
+            setCancelModalState({ isOpen: false, ref: "" });
+          }
+        }}
+        onCancel={() => setCancelModalState({ isOpen: false, ref: "" })}
+      />
     </div>
   );
 }

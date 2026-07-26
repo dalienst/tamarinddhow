@@ -13,6 +13,7 @@ import { DigitalCheckInList } from "@/components/dhow-manager/DigitalCheckInList
 import { ArrowLeft, Lock, Check, Anchor } from "lucide-react";
 import toast from "react-hot-toast";
 import { Skeleton, SkeletonRow } from "@/components/common/Skeleton";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 export default function ManifestPage() {
   const params = useParams();
@@ -30,6 +31,7 @@ export default function ManifestPage() {
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (bookingsData?.results) {
@@ -82,8 +84,11 @@ export default function ManifestPage() {
 
   const handleCloseChecklist = async () => {
     if (!schedule) return;
-    if (!confirm("Are you sure you want to mark this sailing as sailed? This will lock the checklist and confirm the passenger count.")) return;
+    setIsConfirmOpen(true);
+  };
 
+  const handleConfirmClose = async () => {
+    setIsConfirmOpen(false);
     setIsClosingChecklist(true);
     try {
       await updateSchedule(scheduleRef, { status: "completed" }, token);
@@ -157,6 +162,18 @@ export default function ManifestPage() {
         scheduleRef={scheduleRef}
         onStatusChange={handleStatusChange}
         disabled={isClosed}
+      />
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        title="Mark Dhow as Sailed"
+        message="Are you sure you want to mark this sailing as sailed? This will lock the check-in list and passenger seating configuration permanently."
+        confirmText="Confirm & Close"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={isClosingChecklist}
+        onConfirm={handleConfirmClose}
+        onCancel={() => setIsConfirmOpen(false)}
       />
     </div>
   );

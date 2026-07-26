@@ -10,7 +10,7 @@ import { updateSchedule } from "@/services/vessels";
 import { useSession } from "next-auth/react";
 import { Booking } from "@/types/booking";
 import { DigitalCheckInList } from "@/components/dhow-manager/DigitalCheckInList";
-import { ArrowLeft, Lock, Check, Anchor } from "lucide-react";
+import { ArrowLeft, Lock, Check, Anchor, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Skeleton, SkeletonRow } from "@/components/common/Skeleton";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
@@ -132,25 +132,41 @@ export default function ManifestPage() {
           </div>
         </div>
 
-        {schedule && !isClosed && (
-          <button
-            onClick={handleCloseChecklist}
-            disabled={isClosingChecklist}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-800/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
-          >
-            {isClosingChecklist ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
-                Closing Checklist...
-              </>
-            ) : (
-              <>
-                <Anchor className="w-4 h-4" />
-                Mark Dhow as Sailed (Close Checklist)
-              </>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {schedule && (
+            <button
+              onClick={() => {
+                const publicUrl = `${window.location.origin}/manifest/${schedule.reference}`;
+                navigator.clipboard.writeText(publicUrl);
+                toast.success("Public manifest sharing link copied!");
+              }}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm"
+            >
+              <Share2 className="w-4 h-4 text-slate-500" />
+              Share Public Manifest
+            </button>
+          )}
+
+          {schedule && !isClosed && (
+            <button
+              onClick={handleCloseChecklist}
+              disabled={isClosingChecklist}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-800/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
+            >
+              {isClosingChecklist ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+                  Closing Checklist...
+                </>
+              ) : (
+                <>
+                  <Anchor className="w-4 h-4" />
+                  Mark Dhow as Sailed (Close Checklist)
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Manifest List Component */}

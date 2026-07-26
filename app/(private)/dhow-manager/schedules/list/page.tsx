@@ -271,6 +271,18 @@ export default function ScheduleListPage() {
                             Book Walk-In
                           </button>
 
+                          <button
+                            onClick={() => {
+                              const publicUrl = `${window.location.origin}/manifest/${s.reference}`;
+                              navigator.clipboard.writeText(publicUrl);
+                              toast.success("Public manifest sharing link copied!");
+                              setOpenMenuRef(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                          >
+                            Share Public Link
+                          </button>
+
                           <div className="border-t border-slate-100 my-1.5" />
 
                           {s.is_open ? (

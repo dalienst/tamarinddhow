@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createBooking, createBookingGuest } from "@/services/bookings";
+import { createBooking } from "@/services/bookings";
 import { createPayment } from "@/services/payments";
 import { useFetchSchedules } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign } from "lucide-react";
@@ -56,7 +56,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
     
     setIsSaving(true);
     try {
-      // 1. Create Booking
+      // 1. Create Booking with primary guest details inline
       const booking = await createBooking(
         {
           schedule: selectedScheduleId,
@@ -68,41 +68,14 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
           table_request: tableRequest || undefined,
           special_requests: specialRequests || undefined,
           status: paymentState === "unpaid" ? "pending" : "confirmed",
+          primary_guest_name: guestName,
+          primary_guest_email: guestEmail || undefined,
+          primary_guest_phone: guestPhone || undefined,
         },
         token
       );
 
-      // 2. Register Guest details inside the guest roster (Primary guest)
-      const nameParts = guestName.trim().split(" ");
-      const firstName = nameParts[0] || "Walk-In";
-      const lastName = nameParts.slice(1).join(" ") || "Guest";
-      await createBookingGuest(
-        {
-          booking: booking.id,
-          first_name: firstName,
-          last_name: lastName,
-          email: guestEmail || undefined,
-          phone: guestPhone || undefined,
-          is_primary: true,
-        },
-        token
-      );
-
-      // 3. Register generic placeholder guests for the remainder of the party
-      const totalGuests = adults + children;
-      for (let i = 2; i <= totalGuests; i++) {
-        await createBookingGuest(
-          {
-            booking: booking.id,
-            first_name: "Guest",
-            last_name: `${i}`,
-            is_primary: false,
-          },
-          token
-        );
-      }
-
-      // 4. Record Payment if paid (Walk-in payments bypass escrow)
+      // 2. Record Payment if paid (Walk-in payments bypass escrow)
       if (paymentState !== "unpaid") {
         await createPayment(
           {

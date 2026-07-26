@@ -40,6 +40,9 @@ export interface Booking {
   total_amount: string | number;
   check_in_status?: CheckInStatus;
   booking_guests?: BookingGuest[];
+  primary_guest_name?: string;
+  primary_guest_email?: string;
+  primary_guest_phone?: string;
   created_by?: string | null;
   created_at: string;
   updated_at: string;

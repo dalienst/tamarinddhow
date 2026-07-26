@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { createBooking, createBookingGuest } from "@/services/bookings";
 import { createPayment } from "@/services/payments";
-import { useFetchSchedules, useFetchPackages } from "@/hooks/vessels/actions";
+import { useFetchSchedules } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -15,10 +15,8 @@ interface WalkInBookingFormProps {
 export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFormProps) {
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
-  const { data: packagesData } = useFetchPackages();
 
   const schedules = schedulesData?.results || [];
-  const packages = packagesData?.results || [];
 
   // Filter out past voyages from selection
   const todayStr = new Date().toISOString().split("T")[0];
@@ -26,7 +24,6 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
 
   // Form State
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
-  const [selectedPackageId, setSelectedPackageId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
@@ -43,12 +40,6 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       setSelectedScheduleId(upcomingSchedules[0].id);
     }
   }, [upcomingSchedules, selectedScheduleId]);
-
-  useEffect(() => {
-    if (packages.length > 0 && !selectedPackageId) {
-      setSelectedPackageId(packages[0].id);
-    }
-  }, [packages, selectedPackageId]);
 
   // Compute pricing dynamically
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
@@ -69,7 +60,6 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       const booking = await createBooking(
         {
           schedule: selectedScheduleId,
-          package: selectedPackageId || undefined,
           party_size: adults + children,
           adult_count: adults,
           child_count: children,
@@ -152,49 +142,27 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
 
   return (
     <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-      {/* Schedule & Package Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
-          <select
-            value={selectedScheduleId}
-            disabled={isSaving || loadingSchedules}
-            onChange={(e) => setSelectedScheduleId(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-          >
-            {loadingSchedules ? (
-               <option>Loading active voyages...</option>
-            ) : upcomingSchedules.length === 0 ? (
-               <option>No active voyages scheduled</option>
-            ) : (
-               upcomingSchedules.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Dining Package</label>
-          <select
-            value={selectedPackageId}
-            disabled={isSaving}
-            onChange={(e) => setSelectedPackageId(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-          >
-            {packages.length === 0 ? (
-              <option>No dining packages available</option>
-            ) : (
-              packages.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} (KES {parseFloat(p.base_price.toString()).toLocaleString()})
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+      {/* Schedule Selection */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
+        <select
+          value={selectedScheduleId}
+          disabled={isSaving || loadingSchedules}
+          onChange={(e) => setSelectedScheduleId(e.target.value)}
+          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+        >
+          {loadingSchedules ? (
+             <option>Loading active voyages...</option>
+          ) : upcomingSchedules.length === 0 ? (
+             <option>No active voyages scheduled</option>
+          ) : (
+             upcomingSchedules.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
+              </option>
+            ))
+          )}
+        </select>
       </div>
 
       {/* Guest Contact Details */}

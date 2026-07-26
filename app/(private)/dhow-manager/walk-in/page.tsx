@@ -35,6 +35,7 @@ export default function WalkInBookingPage() {
   const [isSavingReschedule, setIsSavingReschedule] = useState(false);
   const [cancelTargetRef, setCancelTargetRef] = useState<string | null>(null);
   const [isCancellingRef, setIsCancellingRef] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<"active" | "past">("active");
 
   // Query Hooks
   const { data: walkInsData, refetch: refetchWalkIns, isLoading: loadingWalkins } = useFetchBookings({
@@ -44,6 +45,16 @@ export default function WalkInBookingPage() {
 
   const walkIns = walkInsData?.results || [];
   const openSchedules = schedulesData?.results || [];
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const activeWalkIns = walkIns.filter(
+    (b) => b.status !== "cancelled" && b.status !== "completed" && b.schedule_date && b.schedule_date >= todayStr
+  );
+  const pastWalkIns = walkIns.filter(
+    (b) => b.status === "cancelled" || b.status === "completed" || !b.schedule_date || b.schedule_date < todayStr
+  );
+
+  const displayedWalkIns = filterMode === "active" ? activeWalkIns : pastWalkIns;
 
   const handleCancelBooking = async (reference: string) => {
     setIsCancellingRef(reference);
@@ -109,104 +120,133 @@ export default function WalkInBookingPage() {
       </div>
 
       {/* Main Spacious List Section */}
-      <div className="space-y-4">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Walk-In Guest Log</h3>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">
+            Walk-In Guest Log
+          </h3>
+          
+          <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200 w-fit">
+            <button
+              onClick={() => setFilterMode("active")}
+              className={`px-3.5 py-1.5 rounded-md transition-all ${
+                filterMode === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Active Voyages ({activeWalkIns.length})
+            </button>
+            <button
+              onClick={() => setFilterMode("past")}
+              className={`px-3.5 py-1.5 rounded-md transition-all ${
+                filterMode === "past" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              Previous & History ({pastWalkIns.length})
+            </button>
+          </div>
+        </div>
         
         {loadingWalkins ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-3.5 shadow-sm animate-pulse">
             {[1, 2, 3, 4].map(i => (
-              <SkeletonCard key={i} />
+              <div key={i} className="h-12 bg-slate-100 rounded-xl w-full" />
             ))}
           </div>
-        ) : walkIns.length === 0 ? (
+        ) : displayedWalkIns.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-sm text-slate-400 font-medium shadow-sm">
-            No walk-ins registered yet. Click "Register Walk-In" to create one.
+            {filterMode === "active" 
+              ? "No active walk-ins found. Click 'Register Walk-In' to create one."
+              : "No past or cancelled walk-ins found."}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {walkIns.map((booking) => {
-              const active = booking.status !== "cancelled" && booking.status !== "completed";
-              return (
-                <div 
-                  key={booking.id} 
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative transition-all hover:border-slate-350 hover:shadow-md flex flex-col justify-between"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
-                        <span className="font-extrabold text-base text-slate-800 block leading-tight">
-                          {booking.booked_by_name || "Walk-In Guest"}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono block uppercase">
-                          Ref: {booking.reference}
-                        </span>
-                      </div>
-                      <span 
-                        className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
-                          booking.status === "confirmed" || booking.status === "completed"
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
-                            : booking.status === "cancelled"
-                            ? "bg-red-50 text-red-800 border border-red-100"
-                            : "bg-amber-50 text-amber-800 border border-amber-100"
-                        }`}
-                      >
-                        {booking.status_display || booking.status}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs pt-1 border-t border-slate-50">
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Calendar className="w-4 h-4 text-slate-400" />
-                        <span className="truncate">{booking.schedule_date || "Sailing Day"}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Users className="w-4 h-4 text-slate-400" />
-                        <span>{booking.party_size} Guests</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Receipt className="w-4 h-4 text-slate-400" />
-                        <span>KES {parseFloat((booking.total_amount || 0).toString()).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <ShieldCheck className="w-4 h-4 text-slate-400" />
-                        <span className="capitalize">{booking.cancellation_preference} pref.</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
-                    <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider truncate max-w-[120px]">
-                      {booking.package_name || "Standard menu"}
-                    </span>
-                    
-                    {active && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setRescheduleTarget(booking)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
-                          title="Reschedule Guest Voyage"
-                        >
-                          <CalendarDays className="w-3.5 h-3.5" />
-                          Reschedule
-                        </button>
-                        <button
-                          disabled={isCancellingRef === booking.reference}
-                          onClick={() => setCancelTargetRef(booking.reference)}
-                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
-                          title="Cancel Booking"
-                        >
-                          {isCancellingRef === booking.reference ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
-                          ) : (
-                            <XCircle className="w-4 h-4" />
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4">Guest & Reference</th>
+                    <th className="px-6 py-4">Sailing Date</th>
+                    <th className="px-6 py-4">Guests Count</th>
+                    <th className="px-6 py-4">Total Price</th>
+                    <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-150/60">
+                  {displayedWalkIns.map((booking) => {
+                    const active = booking.status !== "cancelled" && booking.status !== "completed";
+                    return (
+                      <tr key={booking.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900 leading-tight">
+                            {booking.booked_by_name || "Walk-In Guest"}
+                          </div>
+                          <div className="text-xs text-slate-400 font-mono mt-0.5">
+                            Ref: {booking.reference}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium mt-1">
+                            {booking.package_name || "Standard Menu"}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-700">
+                          {booking.schedule_date || "Sailing Day"}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="font-semibold text-slate-800">
+                            {booking.party_size} Guests
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium">
+                            ({booking.adult_count || booking.party_size} Adults, {booking.child_count || 0} Kids)
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 font-extrabold text-slate-850">
+                          KES {parseFloat((booking.total_amount || 0).toString()).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span 
+                            className={`inline-block px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
+                              booking.status === "confirmed" || booking.status === "completed"
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
+                                : booking.status === "cancelled"
+                                ? "bg-red-50 text-red-800 border border-red-100"
+                                : "bg-amber-50 text-amber-800 border border-amber-100"
+                            }`}
+                          >
+                            {booking.status_display || booking.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {active && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setRescheduleTarget(booking)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                                title="Reschedule Guest Voyage"
+                              >
+                                <CalendarDays className="w-3.5 h-3.5" />
+                                Reschedule
+                              </button>
+                              <button
+                                disabled={isCancellingRef === booking.reference}
+                                onClick={() => setCancelTargetRef(booking.reference)}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
+                                title="Cancel Booking"
+                              >
+                                {isCancellingRef === booking.reference ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
+                                ) : (
+                                  <XCircle className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
                           )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

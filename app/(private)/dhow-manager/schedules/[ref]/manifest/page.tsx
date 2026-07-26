@@ -30,6 +30,12 @@ export default function ManifestPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
 
+  useEffect(() => {
+    if (bookingsData?.results) {
+      setBookings(bookingsData.results);
+    }
+  }, [bookingsData]);
+
   if (loadingSchedule || loadingBookings) {
     return (
       <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6">
@@ -48,12 +54,6 @@ export default function ManifestPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (bookingsData?.results) {
-      setBookings(bookingsData.results);
-    }
-  }, [bookingsData]);
 
   const handleStatusChange = async (ref: string, newCheckInStatus: "pending" | "checked_in" | "no_show") => {
     if (schedule?.status === "completed") {

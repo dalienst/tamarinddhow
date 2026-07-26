@@ -1,23 +1,45 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useFetchBookings } from "@/hooks/bookings/actions";
-import { cancelBooking } from "@/services/bookings";
+import { cancelBooking, updateBooking } from "@/services/bookings";
+import { useFetchSchedules } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
-import { UserPlus, Calendar, ShieldCheck, XCircle, Users, Receipt, RefreshCw } from "lucide-react";
+import { 
+  UserPlus, 
+  Calendar, 
+  ShieldCheck, 
+  XCircle, 
+  Users, 
+  Receipt, 
+  RefreshCw, 
+  X, 
+  CalendarDays,
+  MenuSquare
+} from "lucide-react";
 import toast from "react-hot-toast";
 import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
+import { Booking } from "@/types/booking";
+import { SkeletonCard } from "@/components/common/Skeleton";
 
 export default function WalkInBookingPage() {
   const { data: session } = useSession();
   const token = session?.user?.token || "";
 
-  // Query Hook
+  // Modals state
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
+  const [selectedNewScheduleId, setSelectedNewScheduleId] = useState("");
+  const [isSavingReschedule, setIsSavingReschedule] = useState(false);
+
+  // Query Hooks
   const { data: walkInsData, refetch: refetchWalkIns, isLoading: loadingWalkins } = useFetchBookings({
     booking_type: "walk_in",
   });
+  const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
 
   const walkIns = walkInsData?.results || [];
+  const openSchedules = schedulesData?.results || [];
 
   const handleCancelBooking = async (reference: string) => {
     if (!confirm(`Are you sure you want to cancel booking ${reference}?`)) return;
@@ -30,104 +52,90 @@ export default function WalkInBookingPage() {
     }
   };
 
+  const handleConfirmReschedule = async () => {
+    if (!rescheduleTarget || !selectedNewScheduleId) {
+      toast.error("Please select a new voyage.");
+      return;
+    }
+    setIsSavingReschedule(true);
+    try {
+      await updateBooking(rescheduleTarget.reference, { schedule: selectedNewScheduleId }, token);
+      toast.success(`Booking ${rescheduleTarget.reference} successfully rescheduled!`);
+      setRescheduleTarget(null);
+      setSelectedNewScheduleId("");
+      refetchWalkIns();
+    } catch (err) {
+      toast.error("Failed to reschedule booking.");
+    } finally {
+      setIsSavingReschedule(false);
+    }
+  };
+
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn relative">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <UserPlus className="w-8 h-8 text-amber-600" /> Walk-In Bookings
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Register single guests, groups, or exclusive charter bookings directly. Walk-in payments bypass digital escrows.
+            Register guests, groups, or charter bookings directly. Walk-in payments bypass digital escrows.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => refetchWalkIns()}
+            className="p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            title="Refresh List"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-600/15 transition-all hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <UserPlus className="w-4 h-4" />
+            Register Walk-In
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Walk-in Form - Left/Span 2 */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Reservation Entry Form</h3>
-            <WalkInBookingForm token={token} onSuccess={refetchWalkIns} />
+      {/* Main Spacious List Section */}
+      <div className="space-y-4">
+        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Walk-In Guest Log</h3>
+        
+        {loadingWalkins ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map(i => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
-        </div>
-
-        {/* Recent Walk-Ins List - Right/Span 1 */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Recent Walk-ins</h3>
-              <button 
-                onClick={() => refetchWalkIns()}
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1"
-                title="Refresh Listing"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {loadingWalkins ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-medium">
-                Loading walk-in history...
-              </div>
-            ) : walkIns.length === 0 ? (
-              <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs text-slate-400 font-medium">
-                No walk-ins registered yet.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {walkIns.slice(0, 8).map((booking) => (
-                  <div 
-                    key={booking.id} 
-                    className="bg-white border border-slate-200 rounded-2xl p-4.5 shadow-sm space-y-3 relative transition-all hover:border-slate-300"
-                  >
+        ) : walkIns.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-sm text-slate-400 font-medium shadow-sm">
+            No walk-ins registered yet. Click "Register Walk-In" to create one.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {walkIns.map((booking) => {
+              const active = booking.status !== "cancelled" && booking.status !== "completed";
+              return (
+                <div 
+                  key={booking.id} 
+                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 relative transition-all hover:border-slate-350 hover:shadow-md flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
-                        <span className="font-extrabold text-sm text-slate-800 block leading-tight">
+                        <span className="font-extrabold text-base text-slate-800 block leading-tight">
                           {booking.booked_by_name || "Walk-In Guest"}
                         </span>
                         <span className="text-[10px] text-slate-400 font-mono block uppercase">
                           Ref: {booking.reference}
                         </span>
                       </div>
-                      
-                      {booking.status !== "cancelled" && (
-                        <button
-                          onClick={() => handleCancelBooking(booking.reference)}
-                          className="text-slate-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition-colors absolute top-3 right-3"
-                          title="Cancel Booking"
-                        >
-                          <XCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 text-xs pt-1">
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{booking.schedule_date || "Sailing Day"}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Users className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{booking.party_size} Guests</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <Receipt className="w-3.5 h-3.5 text-slate-400" />
-                        <span>KES {parseFloat((booking.total_amount || 0).toString()).toLocaleString()}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="capitalize">{booking.cancellation_preference} pref.</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-slate-50 pt-3 text-[10px]">
-                      <span className="font-bold text-slate-400 block uppercase tracking-wider">
-                        {booking.package_name || "Standard menu"}
-                      </span>
                       <span 
-                        className={`px-2 py-0.5 font-bold uppercase tracking-wider rounded-full ${
+                        className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
                           booking.status === "confirmed" || booking.status === "completed"
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
                             : booking.status === "cancelled"
@@ -138,13 +146,169 @@ export default function WalkInBookingPage() {
                         {booking.status_display || booking.status}
                       </span>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs pt-1 border-t border-slate-50">
+                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span className="truncate">{booking.schedule_date || "Sailing Day"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
+                        <Users className="w-4 h-4 text-slate-400" />
+                        <span>{booking.party_size} Guests</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
+                        <Receipt className="w-4 h-4 text-slate-400" />
+                        <span>KES {parseFloat((booking.total_amount || 0).toString()).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
+                        <ShieldCheck className="w-4 h-4 text-slate-400" />
+                        <span className="capitalize">{booking.cancellation_preference} pref.</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
+                    <span className="font-bold text-slate-400 text-[10px] uppercase tracking-wider truncate max-w-[120px]">
+                      {booking.package_name || "Standard menu"}
+                    </span>
+                    
+                    {active && (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setRescheduleTarget(booking)}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                          title="Reschedule Guest Voyage"
+                        >
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          Reschedule
+                        </button>
+                        <button
+                          onClick={() => handleCancelBooking(booking.reference)}
+                          className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100"
+                          title="Cancel Booking"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* MODAL 1: Registration Entry Form */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 space-y-4 border border-slate-100 animate-slideUp relative">
+            <button
+              onClick={() => setIsFormOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <UserPlus className="w-6 h-6 text-amber-600" />
+              <h2 className="text-xl font-bold text-slate-800">Register New Walk-In Booking</h2>
+            </div>
+            <div className="pt-2">
+              <WalkInBookingForm 
+                token={token} 
+                onSuccess={() => {
+                  refetchWalkIns();
+                  setIsFormOpen(false);
+                }} 
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* MODAL 2: Reschedule Booking Voyage */}
+      {rescheduleTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 border border-slate-100 animate-slideUp relative">
+            <button
+              onClick={() => {
+                setRescheduleTarget(null);
+                setSelectedNewScheduleId("");
+              }}
+              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <CalendarDays className="w-6 h-6 text-amber-600" />
+              <h2 className="text-xl font-bold text-slate-800">Reschedule Guest Voyage</h2>
+            </div>
+
+            <div className="space-y-4 py-2">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60 space-y-1.5">
+                <div className="text-xs text-slate-400 uppercase font-bold">Guest Details</div>
+                <div className="font-bold text-slate-800 text-sm">{rescheduleTarget.booked_by_name || "Walk-In Guest"}</div>
+                <div className="text-xs text-slate-500 font-medium">Current sailing: <span className="font-semibold text-slate-700">{rescheduleTarget.schedule_date} ({rescheduleTarget.schedule_meal_type || "Voyage"})</span></div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-700">Select Alternative Sailing Voyage</label>
+                <select
+                  disabled={isSavingReschedule || loadingSchedules}
+                  value={selectedNewScheduleId}
+                  onChange={(e) => setSelectedNewScheduleId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                >
+                  <option value="">-- Choose Upcoming open Trip --</option>
+                  {loadingSchedules ? (
+                    <option>Loading voyages...</option>
+                  ) : openSchedules.length === 0 ? (
+                    <option>No upcoming open sailings scheduled</option>
+                  ) : (
+                    openSchedules
+                      .filter(s => s.id !== rescheduleTarget.schedule)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.date} - {s.dhow_name} ({s.meal_type_display}) [{s.available_capacity} seats available]
+                        </option>
+                      ))
+                  )}
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isSavingReschedule}
+                onClick={() => {
+                  setRescheduleTarget(null);
+                  setSelectedNewScheduleId("");
+                }}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg text-sm transition-colors border border-slate-300 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSavingReschedule || !selectedNewScheduleId}
+                onClick={handleConfirmReschedule}
+                className="flex items-center gap-2 px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isSavingReschedule ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                    Updating...
+                  </>
+                ) : (
+                  "Confirm Reschedule"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

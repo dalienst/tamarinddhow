@@ -82,6 +82,9 @@ export default function CreatePackageForm({ onSuccess, token }: CreatePackageFor
           >
             <option value="lunch">Lunch</option>
             <option value="sunset_cruise">Sunset Cruise</option>
+            <option value="booze_cruise">Booze Cruise</option>
+            <option value="special_cruise">Special Cruise</option>
+            <option value="dinner_cruise">Dinner Cruise</option>
           </select>
         </div>
         <div className="space-y-1">

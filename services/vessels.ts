@@ -219,6 +219,26 @@ export const createTable = async (data: Partial<Table>, token: string): Promise<
   return response.data;
 };
 
+export interface TableItemInput {
+  table_number: string;
+  capacity: number;
+  description?: string;
+}
+
+export interface TableBulkCreateData {
+  schedule: string;
+  tables: TableItemInput[];
+}
+
+export const createTableBulk = async (data: TableBulkCreateData, token: string): Promise<Table[]> => {
+  const response: AxiosResponse<Table[]> = await apiActions.post(
+    "/api/v1/tables/bulk/",
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
 export const assignTable = async (
   tableId: string,
   bookingId: string | null,
@@ -228,6 +248,13 @@ export const assignTable = async (
     `/api/v1/tables/${tableId}/assign/`,
     { booking_id: bookingId },
     { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+
+export const getPublicManifest = async (reference: string): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.get(
+    `/api/v1/schedules/${reference}/public-manifest/`
   );
   return response.data;
 };

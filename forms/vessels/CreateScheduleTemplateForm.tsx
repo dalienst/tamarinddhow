@@ -24,6 +24,7 @@ export default function CreateScheduleTemplateForm({
   const [tempRetTime, setTempRetTime] = useState("20:00");
   const [tempDays, setTempDays] = useState<string[]>([]);
   const [tempPrice, setTempPrice] = useState("5000");
+  const [tempPriceChild, setTempPriceChild] = useState("2500");
   const [tempFlatFee, setTempFlatFee] = useState("150000");
   const [tempNotes, setTempNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -48,6 +49,7 @@ export default function CreateScheduleTemplateForm({
         return_time: tempRetTime,
         days_of_week: tempDays,
         price_per_person: parseFloat(tempPrice),
+        price_per_child: parseFloat(tempPriceChild),
         exclusive_flat_fee: parseFloat(tempFlatFee),
         is_active: true,
         notes: tempNotes,
@@ -86,6 +88,9 @@ export default function CreateScheduleTemplateForm({
           >
             <option value="lunch">Lunch</option>
             <option value="sunset_cruise">Sunset Cruise</option>
+            <option value="booze_cruise">Booze Cruise</option>
+            <option value="special_cruise">Special Cruise</option>
+            <option value="dinner_cruise">Dinner Cruise</option>
           </select>
         </div>
         <div className="space-y-1">
@@ -111,12 +116,22 @@ export default function CreateScheduleTemplateForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-[10px] font-bold text-slate-600 uppercase">Price per Person (KES)</label>
+          <label className="block text-[10px] font-bold text-slate-600 uppercase">Price per Adult (KES)</label>
           <input
             type="number"
             disabled={isSaving}
             value={tempPrice}
             onChange={(e) => setTempPrice(e.target.value)}
+            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white disabled:opacity-60"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-600 uppercase">Price per Child (KES)</label>
+          <input
+            type="number"
+            disabled={isSaving}
+            value={tempPriceChild}
+            onChange={(e) => setTempPriceChild(e.target.value)}
             className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 focus:bg-white disabled:opacity-60"
           />
         </div>

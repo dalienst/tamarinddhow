@@ -25,9 +25,11 @@ import {
   ChevronDown, 
   ChevronUp, 
   PlusCircle, 
-  Layers
+  Layers,
+  Loader2
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 // Decoupled Form Components
 import CreateDhowForm from "@/forms/vessels/CreateDhowForm";
@@ -41,6 +43,9 @@ export default function VesselsManagementPage() {
   const token = session?.user?.token || "";
 
   const [activeTab, setActiveTab] = useState<"dhows" | "packages" | "addons">("dhows");
+
+  const [deleteTargetRef, setDeleteTargetRef] = useState<string | null>(null);
+  const [isDeletingRef, setIsDeletingRef] = useState<string | null>(null);
 
   // Query Hooks
   const { data: dhowsData, refetch: refetchDhows } = useFetchDhows();
@@ -93,13 +98,16 @@ export default function VesselsManagementPage() {
   };
 
   const handleDeleteTemplate = async (reference: string) => {
-    if (!confirm("Are you sure you want to delete this template?")) return;
+    setIsDeletingRef(reference);
     try {
       await deleteScheduleTemplate(reference, token);
       toast.success("Template deleted.");
       refetchTemplates();
     } catch (err) {
       toast.error("Failed to delete template.");
+    } finally {
+      setIsDeletingRef(null);
+      setDeleteTargetRef(null);
     }
   };
 
@@ -272,11 +280,18 @@ export default function VesselsManagementPage() {
                                   </div>
                                 </div>
                                 <button
-                                  onClick={() => handleDeleteTemplate(t.reference)}
-                                  className="text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 absolute top-2 right-2"
+                                  disabled={isDeletingRef === t.reference}
+                                  onClick={() => setDeleteTargetRef(t.reference)}
+                                  className={`text-slate-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition-all absolute top-2 right-2 disabled:opacity-60 ${
+                                    isDeletingRef === t.reference ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                                  }`}
                                   title="Delete Template Blueprint"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  {isDeletingRef === t.reference ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
                                 </button>
                               </div>
 
@@ -434,6 +449,20 @@ export default function VesselsManagementPage() {
           token={token}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={deleteTargetRef !== null}
+        title="Delete Template Blueprint"
+        message="Are you sure you want to delete this scheduling template? Generated sailing voyages created from this template will not be deleted."
+        confirmText="Delete Template"
+        cancelText="Go Back"
+        type="danger"
+        isLoading={isDeletingRef !== null && isDeletingRef === deleteTargetRef}
+        onConfirm={() => {
+          if (deleteTargetRef) handleDeleteTemplate(deleteTargetRef);
+        }}
+        onCancel={() => setDeleteTargetRef(null)}
+      />
     </div>
   );
 }

@@ -3,30 +3,33 @@
 import React, { useState, useEffect } from "react";
 import { createBooking } from "@/services/bookings";
 import { createPayment } from "@/services/payments";
-import { useFetchSchedules, useFetchPackages } from "@/hooks/vessels/actions";
+import { useFetchSchedules } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface WalkInBookingFormProps {
   token: string;
   onSuccess: () => void;
+  initialScheduleId?: string;
 }
 
-export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFormProps) {
+export default function WalkInBookingForm({ token, onSuccess, initialScheduleId }: WalkInBookingFormProps) {
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
-  const { data: packagesData } = useFetchPackages();
 
   const schedules = schedulesData?.results || [];
-  const packages = packagesData?.results || [];
+
+  // Filter out past voyages from selection
+  const todayStr = new Date().toISOString().split("T")[0];
+  const upcomingSchedules = schedules.filter((s) => s.date >= todayStr);
 
   // Form State
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
-  const [selectedPackageId, setSelectedPackageId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
-  const [partySize, setPartySize] = useState("2");
+  const [adultCount, setAdultCount] = useState("2");
+  const [childCount, setChildCount] = useState("0");
   const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund">("refund");
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
@@ -34,16 +37,20 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (schedules.length > 0 && !selectedScheduleId) {
-      setSelectedScheduleId(schedules[0].id);
+    if (initialScheduleId) {
+      setSelectedScheduleId(initialScheduleId);
+    } else if (upcomingSchedules.length > 0 && !selectedScheduleId) {
+      setSelectedScheduleId(upcomingSchedules[0].id);
     }
-  }, [schedules, selectedScheduleId]);
+  }, [upcomingSchedules, selectedScheduleId, initialScheduleId]);
 
-  useEffect(() => {
-    if (packages.length > 0 && !selectedPackageId) {
-      setSelectedPackageId(packages[0].id);
-    }
-  }, [packages, selectedPackageId]);
+  // Compute pricing dynamically
+  const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
+  const adultPrice = selectedSchedule ? parseFloat(selectedSchedule.price_per_person.toString()) : 0;
+  const childPrice = selectedSchedule ? parseFloat((selectedSchedule.price_per_child || 0).toString()) : 0;
+  const adults = parseInt(adultCount, 10) || 1;
+  const children = parseInt(childCount, 10) || 0;
+  const totalCalculated = (adults * adultPrice) + (children * childPrice);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,17 +59,21 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
     
     setIsSaving(true);
     try {
-      // 1. Create Booking
+      // 1. Create Booking with primary guest details inline
       const booking = await createBooking(
         {
           schedule: selectedScheduleId,
-          package: selectedPackageId || undefined,
-          party_size: parseInt(partySize, 10),
+          party_size: adults + children,
+          adult_count: adults,
+          child_count: children,
           booking_type: "walk_in",
           cancellation_preference: cancellationPreference,
           table_request: tableRequest || undefined,
           special_requests: specialRequests || undefined,
           status: paymentState === "unpaid" ? "pending" : "confirmed",
+          primary_guest_name: guestName,
+          primary_guest_email: guestEmail || undefined,
+          primary_guest_phone: guestPhone || undefined,
         },
         token
       );
@@ -72,7 +83,7 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
         await createPayment(
           {
             booking: booking.id,
-            amount: booking.total_amount || 5500,
+            amount: totalCalculated,
             payment_method: paymentState,
             status: "completed",
             phone_number: guestPhone || undefined,
@@ -87,13 +98,19 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
       setGuestName("");
       setGuestEmail("");
       setGuestPhone("");
-      setPartySize("2");
+      setAdultCount("2");
+      setChildCount("0");
       setTableRequest("");
       setSpecialRequests("");
       setPaymentState("cash");
       onSuccess();
     } catch (err: any) {
-      toast.error("Failed to create walk-in booking.");
+      console.error("Booking error details:", err.response?.data);
+      const errMsg = err.response?.data?.non_field_errors?.[0] || 
+                     (err.response?.data ? Object.entries(err.response.data).map(([k, v]) => `${k}: ${v}`).join(", ") : "") ||
+                     err.message || 
+                     "Failed to create walk-in booking.";
+      toast.error(errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -101,49 +118,27 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
 
   return (
     <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
-      {/* Schedule & Package Selection */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
-          <select
-            value={selectedScheduleId}
-            disabled={isSaving || loadingSchedules}
-            onChange={(e) => setSelectedScheduleId(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-          >
-            {loadingSchedules ? (
-              <option>Loading active voyages...</option>
-            ) : schedules.length === 0 ? (
-              <option>No active voyages scheduled</option>
-            ) : (
-              schedules.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
-                </option>
-              ))
-            )}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Dining Package</label>
-          <select
-            value={selectedPackageId}
-            disabled={isSaving}
-            onChange={(e) => setSelectedPackageId(e.target.value)}
-            className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-          >
-            {packages.length === 0 ? (
-              <option>No dining packages available</option>
-            ) : (
-              packages.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} (KES {parseFloat(p.base_price.toString()).toLocaleString()})
-                </option>
-              ))
-            )}
-          </select>
-        </div>
+      {/* Schedule Selection */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
+        <select
+          value={selectedScheduleId}
+          disabled={isSaving || loadingSchedules}
+          onChange={(e) => setSelectedScheduleId(e.target.value)}
+          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+        >
+          {loadingSchedules ? (
+             <option>Loading active voyages...</option>
+          ) : upcomingSchedules.length === 0 ? (
+             <option>No active voyages scheduled</option>
+          ) : (
+             upcomingSchedules.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
+              </option>
+            ))
+          )}
+        </select>
       </div>
 
       {/* Guest Contact Details */}
@@ -193,16 +188,39 @@ export default function WalkInBookingForm({ token, onSuccess }: WalkInBookingFor
         <h3 className="font-bold text-slate-800 text-sm">Reservation Preferences</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Party Size (Number of Guests)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Adults Count</label>
             <input
               type="number"
               min="1"
               max="50"
               disabled={isSaving}
-              value={partySize}
-              onChange={(e) => setPartySize(e.target.value)}
+              value={adultCount}
+              onChange={(e) => setAdultCount(e.target.value)}
               className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Children Count (Kid Pricing Applies)</label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              disabled={isSaving}
+              value={childCount}
+              onChange={(e) => setChildCount(e.target.value)}
+              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+            />
+          </div>
+
+          <div className="sm:col-span-2 bg-amber-50/55 border border-amber-200/50 rounded-xl p-3 text-xs text-amber-900 font-semibold space-y-1">
+            <div className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Pricing Math Summary</div>
+            <div>
+              {adults} Adults x KES {adultPrice.toLocaleString()} + {children} Children x KES {childPrice.toLocaleString()}
+            </div>
+            <div className="text-sm font-bold text-slate-900 mt-1">
+              Total Estimated: KES {totalCalculated.toLocaleString()}
+            </div>
           </div>
 
           <div>

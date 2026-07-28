@@ -25,6 +25,8 @@ export interface Booking {
   package?: string | null;
   package_name?: string | null;
   party_size: number;
+  adult_count?: number;
+  child_count?: number;
   status: BookingStatus;
   status_display?: string;
   cancellation_preference: CancellationPreference;
@@ -37,6 +39,10 @@ export interface Booking {
   table_number?: string | null;
   total_amount: string | number;
   check_in_status?: CheckInStatus;
+  booking_guests?: BookingGuest[];
+  primary_guest_name?: string;
+  primary_guest_email?: string;
+  primary_guest_phone?: string;
   created_by?: string | null;
   created_at: string;
   updated_at: string;
@@ -51,6 +57,7 @@ export interface BookingGuest {
   phone?: string | null;
   dietary_needs?: string | null;
   is_primary: boolean;
+  status: CheckInStatus;
   created_at: string;
   updated_at: string;
 }

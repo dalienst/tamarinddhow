@@ -14,7 +14,7 @@ export interface Dhow {
   updated_at: string;
 }
 
-export type MealType = "lunch" | "sunset_cruise";
+export type MealType = "lunch" | "sunset_cruise" | "booze_cruise" | "special_cruise" | "dinner_cruise";
 
 export interface Package {
   id: string;
@@ -52,6 +52,7 @@ export interface ScheduleTemplate {
   return_time: string;
   days_of_week: string[];
   price_per_person: string | number;
+  price_per_child: string | number;
   exclusive_flat_fee: string | number;
   is_active: boolean;
   notes?: string;
@@ -74,6 +75,7 @@ export interface Schedule {
   departure_time: string;
   return_time: string;
   price_per_person: string | number;
+  price_per_child: string | number;
   exclusive_flat_fee: string | number;
   status: ScheduleStatus;
   status_display?: string;

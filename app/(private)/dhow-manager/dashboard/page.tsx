@@ -8,14 +8,18 @@ import {
   Users,
   DollarSign,
   UserPlus,
-  QrCode,
   FileSpreadsheet,
-  AlertTriangle,
   ChevronRight,
   Sparkles,
+  Anchor,
+  Clock,
+  Plus,
+  X
 } from "lucide-react";
 
 import { useFetchAccount, useFetchAllUsers } from "@/hooks/accounts/actions"
+import { useFetchBookings } from "@/hooks/bookings/actions"
+import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions"
 import { User } from "@/services/accounts"
 import CreateAgent from "@/forms/accounts/CreateAgent"
 import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
@@ -24,23 +28,29 @@ import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner"
 export default function DhowManagerDashboard() {
   const { data: account, isLoading: accountLoading } = useFetchAccount()
   const { data: accountsData, isLoading: accountsLoading, error: accountsError, refetch } = useFetchAllUsers()
+  const { data: schedulesData, isLoading: schedulesLoading } = useFetchSchedules()
+  const { data: dhowsData, isLoading: dhowsLoading } = useFetchDhows()
+  const { data: bookingsData, isLoading: bookingsLoading } = useFetchBookings()
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
 
-  if (accountLoading || accountsLoading) {
+  if (accountLoading || accountsLoading || schedulesLoading || dhowsLoading || bookingsLoading) {
       return <LoadingSpinner />
   }
 
   if (accountsError) {
       return (
           <div className="min-h-screen flex items-center justify-center bg-gray-50 text-red-500 font-medium">
-              Error loading users. Please try again.
+              Error loading dashboard data. Please try again.
           </div>
       )
   }
 
-  const users = accountsData?.results || []
+  const users = (accountsData?.results || []).slice(0, 5)
+  const schedules = (schedulesData?.results || []).slice(0, 5)
+  const dhows = (dhowsData?.results || []).slice(0, 5)
+  const bookings = (bookingsData?.results || []).slice(0, 5)
 
   const closeModal = () => {
       setActiveModal(null)
@@ -52,7 +62,7 @@ export default function DhowManagerDashboard() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 opacity-10 pointer-events-none">
@@ -130,199 +140,342 @@ export default function DhowManagerDashboard() {
         </Link>
       </div>
 
-      {/* Operational Highlights Section */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-        <h2 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-          <Ship className="w-5 h-5 text-amber-600" /> Key Dhow Management Shortcuts
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Link
-            href="/dhow-manager/vessels"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors block"
-          >
-            <span className="font-semibold text-slate-800 text-sm block">Vessels & Packages</span>
-            <span className="text-xs text-slate-500">Configure Dhow capacities, minimum quotas, and dining packages.</span>
-          </Link>
+      {/* Row 1: Sailing List (5) & Vessel List (5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Sailing List Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-600" /> Upcoming Sailings
+            </h2>
+            <Link
+              href="/dhow-manager/schedules"
+              className="text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-0.5"
+            >
+              Manage all <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100 flex-1 overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/20 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                  <th className="px-6 py-3">Details</th>
+                  <th className="px-6 py-3">Capacity</th>
+                  <th className="px-6 py-3">Gating</th>
+                  <th className="px-6 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                {schedules.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4.5">
+                      <div className="font-bold text-slate-900">{s.dhow_name}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{s.date} • {s.meal_type_display}</div>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className="font-semibold text-slate-800">{s.current_pax_count} Pax</span>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        s.is_open 
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-100" 
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                      }`}>
+                        {s.is_open ? "Open" : "Closed"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{s.status}</span>
+                    </td>
+                  </tr>
+                ))}
+                {schedules.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400 font-semibold">
+                      No active sailings scheduled.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-          <Link
-            href="/dhow-manager/schedules"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors block"
-          >
-            <span className="font-semibold text-slate-800 text-sm block">Digital Check-In & Manifests</span>
-            <span className="text-xs text-slate-500">Open a schedule to generate daily sailing list & check in guests.</span>
-          </Link>
-
-          <Link
-            href="/dhow-manager/schedules"
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 transition-colors block"
-          >
-            <span className="font-semibold text-slate-800 text-sm block">Dynamic Table Layouts</span>
-            <span className="text-xs text-slate-500">Configure 8 or 12 tables dynamically per sailing and assign seats.</span>
-          </Link>
+        {/* Vessel List Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Anchor className="w-5 h-5 text-amber-600" /> Vessels Registry
+            </h2>
+            <Link
+              href="/dhow-manager/vessels"
+              className="text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-0.5"
+            >
+              Configure <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100 flex-1 overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/20 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                  <th className="px-6 py-3">Vessel</th>
+                  <th className="px-6 py-3">Capacity (Max / Min)</th>
+                  <th className="px-6 py-3">Operations</th>
+                  <th className="px-6 py-3">Gating</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                {dhows.map((d) => (
+                  <tr key={d.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4.5 font-bold text-slate-900">{d.name}</td>
+                    <td className="px-6 py-4.5">
+                      <span className="font-mono text-slate-600">{d.total_capacity} Max / {d.min_quota} Min</span>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        d.is_available 
+                          ? "bg-blue-50 text-blue-700 border border-blue-100" 
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                      }`}>
+                        {d.is_available ? "In Service" : "Out of Service"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      {d.is_active ? (
+                        <div className="flex items-center gap-1.5 text-green-600">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Active</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Inactive</span>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {dhows.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400 font-semibold">
+                      No vessels configured.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* Users Table Section */}
-      <div className="bg-white rounded-2xl shadow border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center relative overflow-visible">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" /> User Registry
-              </h2>
+      {/* Row 2: Recent Bookings (5) & Users (5) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Recent Guest Bookings Log */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-600" /> Recent Guest Bookings
+            </h2>
+            <Link
+              href="/dhow-manager/walk-in"
+              className="text-xs font-semibold text-amber-700 hover:text-amber-800 flex items-center gap-0.5"
+            >
+              Bookings Log <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100 flex-1 overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/20 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                  <th className="px-6 py-3">Reference & Guest</th>
+                  <th className="px-6 py-3">Pax Count</th>
+                  <th className="px-6 py-3">Total Amount</th>
+                  <th className="px-6 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                {bookings.map((b) => (
+                  <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4.5">
+                      <div className="font-mono font-bold text-slate-900">{b.reference}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{b.booked_by_name || "Walk-In Guest"}</div>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className="font-semibold text-slate-800">{b.party_size} Pax</span>
+                    </td>
+                    <td className="px-6 py-4.5 font-bold text-amber-750">
+                      KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        b.status === "confirmed" || b.status === "completed"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
+                          : b.status === "cancelled"
+                          ? "bg-rose-50 text-rose-800 border border-rose-100"
+                          : "bg-amber-50 text-amber-800 border border-amber-100"
+                      }`}>
+                        {b.status_display || b.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {bookings.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400 font-semibold">
+                      No bookings recorded.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Users Table Section */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 relative overflow-visible">
+            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-amber-600" /> User Registry
+            </h2>
+            
+            {/* Popover Wrapper */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+                className="bg-amber-750 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-850 transition-all flex items-center gap-1"
+              >
+                <UserPlus className="w-3.5 h-3.5" /> Add User
+              </button>
               
-              {/* Popover Wrapper */}
-              <div className="relative">
-                  <button 
-                      onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                      className="bg-primary text-white px-4 py-2 rounded text-xs font-semibold hover:bg-primary-hover transition-all flex items-center gap-2"
-                  >
-                      <UserPlus className="w-4 h-4" /> Add New User
-                  </button>
-                  
-                  {isPopoverOpen && (
-                      <>
-                          <div 
-                              className="fixed inset-0 z-10" 
-                              onClick={() => setIsPopoverOpen(false)}
-                          ></div>
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
-                              <button
-                                  onClick={() => {
-                                      setActiveModal("agent")
-                                      setIsPopoverOpen(false)
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                  Create Agent
-                              </button>
-                              <button
-                                  onClick={() => {
-                                      setActiveModal("manager")
-                                      setIsPopoverOpen(false)
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                  Create Dhow Manager
-                              </button>
-                          </div>
-                      </>
-                  )}
-              </div>
+              {isPopoverOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setIsPopoverOpen(false)}
+                  ></div>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20 overflow-hidden">
+                    <button
+                      onClick={() => {
+                        setActiveModal("agent")
+                        setIsPopoverOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Create Agent
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveModal("manager")
+                        setIsPopoverOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Create Dhow Manager
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
-          <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                  <thead>
-                      <tr className="bg-gray-50/50">
-                          <th className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">User Details</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Identifier</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Access Level</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Status</th>
-                          <th className="px-6 py-3 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Joined On</th>
-                      </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                      {users.map((user: User) => (
-                          <tr key={user.id} className="hover:bg-gray-50/50 transition-colors group">
-                              <td className="px-6 py-4">
-                                  <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 bg-primary/5 rounded flex items-center justify-center text-primary font-semibold text-sm group-hover:bg-primary group-hover:text-white transition-all">
-                                          {user.first_name?.[0]}{user.last_name?.[0]}
-                                      </div>
-                                      <div>
-                                          <p className="text-sm font-semibold text-gray-900">{user.first_name} {user.last_name}</p>
-                                          <p className="text-xs text-gray-500">{user.email}</p>
-                                      </div>
-                                  </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                  <span className="font-mono text-[10px] font-semibold bg-gray-50 px-2 py-1 rounded text-gray-600 border border-gray-100">
-                                      {user.usercode}
-                                  </span>
-                              </td>
-                              <td className="px-6 py-4">
-                                  <div className="flex gap-1.5">
-                                      {user.is_superuser && (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
-                                              Admin
-                                          </span>
-                                      )}
-                                      {user.is_dhow_manager && (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
-                                              Manager
-                                          </span>
-                                      )}
-                                      {user.is_agent && (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-green-50 text-green-700 border border-green-100">
-                                              Agent
-                                          </span>
-                                      )}
-                                      {user.is_guest && (
-                                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-gray-50 text-gray-600 border border-gray-100">
-                                              Guest
-                                          </span>
-                                      )}
-                                  </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                  {user.is_active ? (
-                                      <div className="flex items-center gap-1.5 text-green-600">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
-                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Active</span>
-                                      </div>
-                                  ) : (
-                                      <div className="flex items-center gap-1.5 text-gray-400">
-                                          <div className="w-1.5 h-1.5 rounded-full bg-gray-400"></div>
-                                          <span className="text-[10px] font-semibold uppercase tracking-wider">Inactive</span>
-                                      </div>
-                                  )}
-                              </td>
-                              <td className="px-6 py-4 text-xs text-gray-500 font-semibold">
-                                  {new Date(user.created_at).toLocaleDateString()}
-                              </td>
-                          </tr>
-                      ))}
-                  </tbody>
-              </table>
+          <div className="divide-y divide-slate-100 flex-1 overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="bg-slate-50/20 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-100">
+                  <th className="px-6 py-3">Details</th>
+                  <th className="px-6 py-3">Identifier</th>
+                  <th className="px-6 py-3">Level</th>
+                  <th className="px-6 py-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                {users.map((user: User) => (
+                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-6 py-4.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-800 font-bold text-xs flex items-center justify-center flex-shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                          {user.first_name?.[0]}{user.last_name?.[0]}
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-900">{user.first_name} {user.last_name}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{user.email}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <span className="font-mono text-[9px] font-semibold bg-slate-50 px-1.5 py-0.5 rounded text-slate-600 border border-slate-100">
+                        {user.usercode}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      <div className="flex gap-1.5">
+                        {user.is_superuser && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-100">
+                            Admin
+                          </span>
+                        )}
+                        {user.is_dhow_manager && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
+                            Manager
+                          </span>
+                        )}
+                        {user.is_agent && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-green-50 text-green-700 border border-green-100">
+                            Agent
+                          </span>
+                        )}
+                        {user.is_guest && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-gray-50 text-gray-600 border border-gray-100">
+                            Guest
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4.5">
+                      {user.is_active ? (
+                        <div className="flex items-center gap-1.5 text-green-600">
+                          <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Active</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-slate-400">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+                          <span className="text-[10px] font-semibold uppercase tracking-wider">Inactive</span>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {users.length === 0 && (
-              <div className="py-20 text-center">
-                  <p className="text-sm text-gray-400 font-semibold">No users found.</p>
-              </div>
-          )}
+        </div>
       </div>
 
       {/* Plain Tailwind Modal Implementation */}
       {activeModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              {/* Backdrop */}
-              <div 
-                  className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm"
-                  onClick={closeModal}
-              ></div>
-              
-              {/* Modal Content */}
-              <div className="relative bg-white rounded shadow-lg w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                  <div className="px-6 py-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-                      <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-widest">
-                          {activeModal === "agent" ? "Create New Agent" : "Create Dhow Manager"}
-                      </h3>
-                      <button 
-                          onClick={closeModal}
-                          className="text-gray-400 hover:text-gray-600 transition-colors"
-                      >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                              <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
-                          </svg>
-                      </button>
-                  </div>
-                  <div className="p-6">
-                      {activeModal === "agent" ? (
-                          <CreateAgent onSuccess={handleSuccess} onCancel={closeModal} />
-                      ) : (
-                          <CreateDhowManager onSuccess={handleSuccess} onCancel={closeModal} />
-                      )}
-                  </div>
-              </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scaleIn border border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                {activeModal === "agent" ? "Create New Agent" : "Create Dhow Manager"}
+              </h3>
+              <button 
+                onClick={closeModal}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              {activeModal === "agent" ? (
+                <CreateAgent onSuccess={handleSuccess} onCancel={closeModal} />
+              ) : (
+                <CreateDhowManager onSuccess={handleSuccess} onCancel={closeModal} />
+              )}
+            </div>
           </div>
+        </div>
       )}
     </div>
   );

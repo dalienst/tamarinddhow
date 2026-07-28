@@ -218,7 +218,7 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
               >
                 {isSaving ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" style={{ borderRadius: "50%" }} />
                     Saving...
                   </>
                 ) : (
@@ -295,7 +295,7 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
                 >
                   {isSaving ? (
                     <>
-                      <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" style={{ borderRadius: "50%" }} />
                       Generating...
                     </>
                   ) : (

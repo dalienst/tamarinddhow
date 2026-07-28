@@ -129,7 +129,7 @@ export default function PublicManifestPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-10 h-10 border-4 border-amber-600 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderRadius: "50%" }} />
           <p className="text-sm font-semibold text-slate-500">Loading daily manifest...</p>
         </div>
       </div>

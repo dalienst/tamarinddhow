@@ -350,7 +350,7 @@ export default function WalkInBookingPage() {
               >
                 {isSavingReschedule ? (
                   <>
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" style={{ borderRadius: "50%" }} />
                     Updating...
                   </>
                 ) : (

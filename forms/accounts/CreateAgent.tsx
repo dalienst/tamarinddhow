@@ -118,7 +118,7 @@ export default function CreateAgent({ onSuccess, onCancel }: CreateAgentProps) {
                     className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50 shadow-lg shadow-brand-500/30 transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                     {formik.isSubmitting ? (
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" style={{ borderRadius: "50%" }}></div>
                     ) : (
                         <UserPlus className="w-4 h-4" />
                     )}

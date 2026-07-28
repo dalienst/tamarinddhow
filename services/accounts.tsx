@@ -42,6 +42,7 @@ export interface updateUser {
   phone_number: string | null;
   city: string | null;
   address: string | null;
+  password?: string;
 }
 
 export interface forgotPassword {

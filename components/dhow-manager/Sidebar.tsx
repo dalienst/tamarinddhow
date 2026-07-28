@@ -13,7 +13,8 @@ import {
   QrCode,
   HelpCircle,
   X,
-  List
+  List,
+  Settings
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -35,6 +36,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: 'Vessels', href: '/dhow-manager/vessels', icon: Ship },
     { name: 'Scanner', href: '/dhow-manager/scanner', icon: QrCode },
     { name: 'Help Guide', href: '/dhow-manager/help', icon: HelpCircle },
+    { name: 'Profile Settings', href: '/dhow-manager/profile', icon: Settings },
   ];
 
   return (

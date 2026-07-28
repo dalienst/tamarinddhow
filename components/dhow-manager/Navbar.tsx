@@ -3,6 +3,7 @@
 import React from 'react';
 import { Menu, LogOut, User as UserIcon } from 'lucide-react';
 import { signOut } from 'next-auth/react';
+import Link from 'next/link';
 
 interface NavbarProps {
   setSidebarOpen: (isOpen: boolean) => void;
@@ -22,10 +23,13 @@ export default function Navbar({ setSidebarOpen }: NavbarProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+        <Link
+          href="/dhow-manager/profile"
+          className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-150 rounded-lg border border-gray-100 transition-colors cursor-pointer"
+        >
             <UserIcon className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-700">Manager Session</span>
-        </div>
+            <span className="text-sm font-semibold text-gray-700">Manager Profile</span>
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="flex items-center gap-2 text-sm font-semibold text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"

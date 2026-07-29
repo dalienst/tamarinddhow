@@ -212,9 +212,9 @@ export default function ScheduleListPage() {
                       <span className="font-extrabold text-slate-900 text-lg tracking-tight">{s.dhow_name}</span>
                       <StatusBadge status={s.status} type="schedule" />
                       <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
-                        s.is_open ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                        (s.is_open && s.status !== "completed" && s.status !== "cancelled") ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
                       }`}>
-                        {s.is_open ? "Bookings Open" : "Bookings Closed"}
+                        {(s.is_open && s.status !== "completed" && s.status !== "cancelled") ? "Bookings Open" : "Bookings Closed"}
                       </span>
                     </div>
                     <div className="text-sm font-medium text-slate-500 flex items-center gap-2 flex-wrap">

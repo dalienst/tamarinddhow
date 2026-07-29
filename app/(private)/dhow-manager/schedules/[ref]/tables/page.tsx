@@ -69,7 +69,7 @@ export default function DynamicTablesPage() {
           schedule: schedule.id,
           table_number: num,
           capacity: cap,
-          description: desc,
+          description: desc || undefined,
           is_available: true,
         },
         token

@@ -35,7 +35,7 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
   const [newDescription, setNewDescription] = useState("");
 
   // Bulk creation state
-  const [bulkTables, setBulkTables] = useState<{ table_number: string; capacity: number; description: string }[]>([
+  const [bulkTables, setBulkTables] = useState<{ table_number: string; capacity: number | string; description: string }[]>([
     { table_number: "", capacity: 4, description: "" }
   ]);
 
@@ -83,9 +83,14 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
       toast.error("Please enter a table number.");
       return;
     }
+    const cap = parseInt(newCapacity, 10);
+    if (isNaN(cap) || cap < 1) {
+      toast.error("Please enter a valid capacity (at least 1).");
+      return;
+    }
     setIsSaving(true);
     try {
-      await onCreateTable(newTableNum, parseInt(newCapacity, 10), newDescription);
+      await onCreateTable(newTableNum, cap, newDescription.trim());
       toast.success(`Table ${newTableNum} created!`);
       setNewTableNum("");
       setNewDescription("");
@@ -104,7 +109,8 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
         toast.error(`Please fill in Table Number for row ${i + 1}.`);
         return;
       }
-      if (bulkTables[i].capacity < 1) {
+      const cap = Number(bulkTables[i].capacity);
+      if (isNaN(cap) || cap < 1) {
         toast.error(`Capacity must be at least 1 for row ${i + 1}.`);
         return;
       }
@@ -252,7 +258,10 @@ export const TableManagerGrid: React.FC<TableManagerGridProps> = ({
                         max="20"
                         required
                         value={row.capacity}
-                        onChange={(e) => updateBulkRow(index, "capacity", parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          updateBulkRow(index, "capacity", val === "" ? "" : parseInt(val, 10) || 0);
+                        }}
                         className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 bg-white disabled:opacity-60"
                       />
                     </div>

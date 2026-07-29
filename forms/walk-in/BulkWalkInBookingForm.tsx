@@ -29,6 +29,7 @@ interface BulkBookingRow {
   paymentState: "unpaid" | "cash" | "mpesa" | "agent_credit" | "waived";
   transactionRef: string;
   isPartialPayment: boolean;
+  partialPaymentType: "amount" | "percentage";
   partialPaidAmount: string;
   selectedAddons: { id: string; name: string; price: number; quantity: number }[];
 }
@@ -63,6 +64,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     paymentState: "cash",
     transactionRef: "",
     isPartialPayment: false,
+    partialPaymentType: "amount",
     partialPaidAmount: "",
     selectedAddons: [],
   };
@@ -107,6 +109,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           // If payment status becomes unpaid, turn off partial payments and trans ref
           if (field === "paymentState" && value === "unpaid") {
             updatedRow.isPartialPayment = false;
+            updatedRow.partialPaymentType = "amount";
             updatedRow.partialPaidAmount = "";
             updatedRow.transactionRef = "";
           }
@@ -186,10 +189,14 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       : discountValueParsed;
 
     const finalTotal = Math.max(0, totalCalculated - discount);
+    const depositVal = parseFloat(row.partialPaidAmount) || 0;
+    const depositAmount = row.isPartialPayment
+      ? (row.partialPaymentType === "percentage" ? finalTotal * (depositVal / 100) : depositVal)
+      : 0;
     const paidAmount = row.paymentState === "unpaid" 
       ? 0 
       : row.isPartialPayment 
-        ? parseFloat(row.partialPaidAmount) || 0 
+        ? depositAmount 
         : finalTotal;
     const unpaidBalance = Math.max(0, finalTotal - paidAmount);
     return { ticketSubtotal, addonsSubtotal, totalCalculated, discount, finalTotal, paidAmount, unpaidBalance };
@@ -229,10 +236,14 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
         toast.error(`Please enter a discount reason for row ${i + 1}.`);
         return;
       }
-      if (row.isPartialPayment) {
-        const deposit = parseFloat(row.partialPaidAmount) || 0;
-        if (deposit <= 0 || deposit > pricing.finalTotal) {
-          toast.error(`Row ${i + 1}: Deposit must be greater than 0 and less than final total KES ${pricing.finalTotal.toLocaleString()}.`);
+      if (row.paymentState !== "unpaid" && row.isPartialPayment) {
+        const depositVal = parseFloat(row.partialPaidAmount) || 0;
+        if (row.partialPaymentType === "percentage" && (depositVal <= 0 || depositVal > 100)) {
+          toast.error(`Row ${i + 1}: Deposit percentage must be between 1% and 100%.`);
+          return;
+        }
+        if (row.partialPaymentType === "amount" && (depositVal <= 0 || depositVal > pricing.finalTotal)) {
+          toast.error(`Row ${i + 1}: Deposit amount must be greater than 0 and less than final total KES ${pricing.finalTotal.toLocaleString()}.`);
           return;
         }
       }
@@ -265,7 +276,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           payment_method: row.paymentState,
           transaction_ref: row.transactionRef.trim() || undefined,
           is_partial_payment: row.isPartialPayment,
-          partial_paid_amount: row.isPartialPayment ? parseFloat(row.partialPaidAmount) : 0,
+          partial_paid_amount: pricing.paidAmount,
           addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
         };
       });
@@ -488,18 +499,40 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                             </label>
 
                             {row.isPartialPayment && (
-                              <div className="mt-1 space-y-0.5">
-                                <span className="text-[9px] text-slate-400 font-bold uppercase">Amount Paid Today</span>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max={pricing.finalTotal}
-                                  required
-                                  disabled={isSaving}
-                                  value={row.partialPaidAmount}
-                                  onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
-                                  className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px]"
-                                />
+                              <div className="mt-1 space-y-1">
+                                <div className="flex gap-1">
+                                  <select
+                                    disabled={isSaving}
+                                    value={row.partialPaymentType}
+                                    onChange={(e) => {
+                                      updateRow(index, "partialPaymentType", e.target.value as any);
+                                      if (e.target.value === "percentage") {
+                                        updateRow(index, "partialPaidAmount", "50");
+                                      } else {
+                                        updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
+                                      }
+                                    }}
+                                    className="px-1 py-0.5 border border-slate-200 rounded text-[9px] font-semibold bg-white"
+                                  >
+                                    <option value="amount">KES</option>
+                                    <option value="percentage">%</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max={row.partialPaymentType === "percentage" ? 100 : pricing.finalTotal}
+                                    required
+                                    disabled={isSaving}
+                                    value={row.partialPaidAmount}
+                                    onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
+                                    className="flex-1 px-1 py-0.5 border border-slate-200 rounded text-[10px] w-12"
+                                  />
+                                </div>
+                                {row.partialPaymentType === "percentage" && (
+                                  <div className="text-[8px] text-slate-500 font-semibold truncate">
+                                    Dep: KES {pricing.paidAmount.toLocaleString()}
+                                  </div>
+                                )}
                                 <div className="text-[8px] text-amber-700 font-medium truncate">
                                   Bal: KES {pricing.unpaidBalance.toLocaleString()}
                                 </div>

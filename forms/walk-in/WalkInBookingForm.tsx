@@ -60,6 +60,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   const [selectedAddons, setSelectedAddons] = useState<SelectedAddonItem[]>([]);
 
   const [isPartialPayment, setIsPartialPayment] = useState(false);
+  const [partialPaymentType, setPartialPaymentType] = useState<"amount" | "percentage">("amount");
   const [partialPaidAmount, setPartialPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -217,7 +218,10 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
 
         // 2. Record Payment if paid (Walk-in payments bypass escrow)
         if (paymentState !== "unpaid") {
-          const payAmount = isPartialPayment ? (parseFloat(partialPaidAmount) || 0) : finalTotal;
+          const depositVal = parseFloat(partialPaidAmount) || 0;
+          const payAmount = isPartialPayment
+            ? (partialPaymentType === "percentage" ? finalTotal * (depositVal / 100) : depositVal)
+            : finalTotal;
           await createPayment(
             {
               booking: booking.id,
@@ -603,19 +607,68 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
               </label>
 
               {isPartialPayment && (
-                <div className="pt-1">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Amount Paid Today (KES)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max={finalTotal}
-                    disabled={isSaving}
-                    value={partialPaidAmount}
-                    onChange={(e) => setPartialPaidAmount(e.target.value)}
-                    className="w-full sm:w-48 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white"
-                  />
-                  <div className="text-[10px] text-slate-500 mt-1">
-                    Remaining unpaid balance of KES {Math.max(0, finalTotal - (parseFloat(partialPaidAmount) || 0)).toLocaleString()} will be due later.
+                <div className="pt-1 space-y-2.5 animate-fadeIn">
+                  <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase">Deposit Type</label>
+                    <div className="flex rounded-lg border border-slate-200 overflow-hidden text-[10px] font-bold w-fit bg-slate-100 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPartialPaymentType("amount");
+                          setPartialPaidAmount(Math.floor(finalTotal / 2).toString());
+                        }}
+                        className={`px-3 py-1 rounded-md transition-all ${
+                          partialPaymentType === "amount" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                        }`}
+                      >
+                        Flat KES
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPartialPaymentType("percentage");
+                          setPartialPaidAmount("50");
+                        }}
+                        className={`px-3 py-1 rounded-md transition-all ${
+                          partialPaymentType === "percentage" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                        }`}
+                      >
+                        Percentage (%)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      {partialPaymentType === "percentage" ? "Deposit Percentage (%)" : "Amount Paid Today (KES)"}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={partialPaymentType === "percentage" ? 100 : finalTotal}
+                      disabled={isSaving}
+                      placeholder={partialPaymentType === "percentage" ? "e.g. 50" : "e.g. 5000"}
+                      value={partialPaidAmount}
+                      onChange={(e) => setPartialPaidAmount(e.target.value)}
+                      className="w-full sm:w-48 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white font-semibold"
+                    />
+                    <div className="text-[10px] text-slate-500 mt-1 font-semibold">
+                      {(() => {
+                        const val = parseFloat(partialPaidAmount) || 0;
+                        const absoluteDeposit = partialPaymentType === "percentage" ? finalTotal * (val / 100) : val;
+                        const remaining = Math.max(0, finalTotal - absoluteDeposit);
+                        return (
+                          <>
+                            {partialPaymentType === "percentage" && (
+                              <span className="block text-slate-600 font-bold">
+                                Equivalent Deposit Amount: KES {absoluteDeposit.toLocaleString()}
+                              </span>
+                            )}
+                            Remaining unpaid balance of KES {remaining.toLocaleString()} will be due later.
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               )}

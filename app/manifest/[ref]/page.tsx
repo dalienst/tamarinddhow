@@ -28,6 +28,7 @@ interface ManifestBooking {
   special_requests: string;
   status: string;
   booking_guests: ManifestGuest[];
+  booking_addons?: { addon_name: string; quantity: number; total_price: number }[];
 }
 
 interface ScheduleData {
@@ -294,9 +295,23 @@ export default function PublicManifestPage() {
                     </p>
                   </div>
 
-                  {b.special_requests && (
-                    <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-xl max-w-sm text-xs font-semibold">
-                      Dietaries / Requests: {b.special_requests}
+                  {(b.special_requests || (b.booking_addons && b.booking_addons.length > 0)) && (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-xl max-w-sm text-xs font-semibold space-y-1.5">
+                      {b.special_requests && (
+                        <div>Dietaries / Requests: {b.special_requests}</div>
+                      )}
+                      {b.booking_addons && b.booking_addons.length > 0 && (
+                        <div>
+                          <span className="text-[10px] text-amber-800 uppercase font-bold block mb-0.5">Custom Add-Ons:</span>
+                          <ul className="list-disc pl-4 space-y-0.5 font-medium text-amber-950">
+                            {b.booking_addons.map((ba, idx) => (
+                              <li key={idx}>
+                                {ba.addon_name} (x{ba.quantity})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

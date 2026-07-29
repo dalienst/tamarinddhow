@@ -220,6 +220,18 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                             Exclusive Charter
                           </span>
                         )}
+                        {b.booking_addons && b.booking_addons.length > 0 && (
+                          <div className="mt-1.5 space-y-0.5">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase block">Add-ons:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {b.booking_addons.map((ba, idx) => (
+                                <span key={idx} className="inline-block text-[10px] bg-slate-100 border border-slate-200 text-slate-700 px-1.5 py-0.5 rounded font-semibold">
+                                  {ba.addon_name} (x{ba.quantity})
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-2 max-w-[170px]">

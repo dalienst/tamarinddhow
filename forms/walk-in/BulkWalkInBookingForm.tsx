@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { createBookingBulk } from "@/services/bookings";
-import { useFetchSchedules } from "@/hooks/vessels/actions";
-import { Plus, Trash2, HelpCircle, DollarSign } from "lucide-react";
+import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
+import { Plus, Trash2, HelpCircle, DollarSign, ShoppingBag, ChevronDown, ChevronUp, Minus } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface BulkWalkInBookingFormProps {
@@ -18,44 +18,55 @@ interface BulkBookingRow {
   guestPhone: string;
   adultCount: string;
   childCount: string;
+  customAdultPrice: string;
+  customChildPrice: string;
   cancellationPreference: "reschedule" | "refund";
   tableRequest: string;
   specialRequests: string;
-  discountAmount: string;
+  discountType: "amount" | "percentage";
+  discountValue: string;
   discountReason: string;
   paymentState: "unpaid" | "cash" | "mpesa" | "agent_credit" | "waived";
   isPartialPayment: boolean;
   partialPaidAmount: string;
+  selectedAddons: { id: string; name: string; price: number; quantity: number }[];
 }
 
 export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBookingFormProps) {
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
+  const { data: addonsData } = useFetchAddOns();
+
   const schedules = schedulesData?.results || [];
+  const addonsList = addonsData?.results || [];
 
   // Filter out past voyages from selection
   const todayStr = new Date().toISOString().split("T")[0];
   const upcomingSchedules = schedules.filter((s) => s.date >= todayStr);
 
-  const [rows, setRows] = useState<BulkBookingRow[]>([
-    {
-      scheduleId: "",
-      guestName: "",
-      guestEmail: "",
-      guestPhone: "",
-      adultCount: "2",
-      childCount: "0",
-      cancellationPreference: "refund",
-      tableRequest: "",
-      specialRequests: "",
-      discountAmount: "0",
-      discountReason: "",
-      paymentState: "cash",
-      isPartialPayment: false,
-      partialPaidAmount: "",
-    },
-  ]);
+  const defaultRow: BulkBookingRow = {
+    scheduleId: "",
+    guestName: "",
+    guestEmail: "",
+    guestPhone: "",
+    adultCount: "2",
+    childCount: "0",
+    customAdultPrice: "",
+    customChildPrice: "",
+    cancellationPreference: "refund",
+    tableRequest: "",
+    specialRequests: "",
+    discountType: "amount",
+    discountValue: "0",
+    discountReason: "",
+    paymentState: "cash",
+    isPartialPayment: false,
+    partialPaidAmount: "",
+    selectedAddons: [],
+  };
 
+  const [rows, setRows] = useState<BulkBookingRow[]>([{ ...defaultRow }]);
+  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize first row schedule selection once schedules load
@@ -73,22 +84,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     const nextScheduleId = upcomingSchedules.length > 0 ? upcomingSchedules[0].id : "";
     setRows([
       ...rows,
-      {
-        scheduleId: nextScheduleId,
-        guestName: "",
-        guestEmail: "",
-        guestPhone: "",
-        adultCount: "2",
-        childCount: "0",
-        cancellationPreference: "refund",
-        tableRequest: "",
-        specialRequests: "",
-        discountAmount: "0",
-        discountReason: "",
-        paymentState: "cash",
-        isPartialPayment: false,
-        partialPaidAmount: "",
-      },
+      { ...defaultRow, scheduleId: nextScheduleId },
     ]);
   };
 
@@ -98,6 +94,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       return;
     }
     setRows(rows.filter((_, idx) => idx !== index));
+    if (expandedRowIndex === index) setExpandedRowIndex(null);
   };
 
   const updateRow = <K extends keyof BulkBookingRow>(index: number, field: K, value: BulkBookingRow[K]) => {
@@ -110,6 +107,9 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
             updatedRow.isPartialPayment = false;
             updatedRow.partialPaidAmount = "";
           }
+          if (field === "discountType") {
+            updatedRow.discountValue = "0";
+          }
           return updatedRow;
         }
         return row;
@@ -117,23 +117,67 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     );
   };
 
+  const handleAddAddon = (rowIndex: number, addon: any) => {
+    setRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== rowIndex) return row;
+        const selected = [...row.selectedAddons];
+        const existing = selected.find((item) => item.id === addon.id);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          selected.push({ id: addon.id, name: addon.name, price: parseFloat(addon.price.toString()), quantity: 1 });
+        }
+        return { ...row, selectedAddons: selected };
+      })
+    );
+  };
+
+  const handleRemoveAddon = (rowIndex: number, addonId: string) => {
+    setRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== rowIndex) return row;
+        let selected = [...row.selectedAddons];
+        const existing = selected.find((item) => item.id === addonId);
+        if (existing && existing.quantity > 1) {
+          existing.quantity -= 1;
+        } else {
+          selected = selected.filter((item) => item.id !== addonId);
+        }
+        return { ...row, selectedAddons: selected };
+      })
+    );
+  };
+
   // Helper pricing calculators for aggregate panel
   const getRowPricing = (row: BulkBookingRow) => {
     const s = schedules.find((sched) => sched.id === row.scheduleId);
-    const adultPrice = s ? parseFloat(s.price_per_person.toString()) : 0;
-    const childPrice = s ? parseFloat((s.price_per_child || 0).toString()) : 0;
+    const baseAdultPrice = s ? parseFloat(s.price_per_person.toString()) : 0;
+    const baseChildPrice = s ? parseFloat((s.price_per_child || 0).toString()) : 0;
+    
+    const effectiveAdultPrice = row.customAdultPrice ? parseFloat(row.customAdultPrice) || 0 : baseAdultPrice;
+    const effectiveChildPrice = row.customChildPrice ? parseFloat(row.customChildPrice) || 0 : baseChildPrice;
+
     const adults = parseInt(row.adultCount, 10) || 1;
     const children = parseInt(row.childCount, 10) || 0;
-    const total = (adults * adultPrice) + (children * childPrice);
-    const discount = parseFloat(row.discountAmount) || 0;
-    const finalTotal = Math.max(0, total - discount);
+    
+    const ticketSubtotal = (adults * effectiveAdultPrice) + (children * effectiveChildPrice);
+    const addonsSubtotal = row.selectedAddons.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const totalCalculated = ticketSubtotal + addonsSubtotal;
+
+    const discountValueParsed = parseFloat(row.discountValue) || 0;
+    const discount = row.discountType === "percentage"
+      ? ticketSubtotal * (discountValueParsed / 100)
+      : discountValueParsed;
+
+    const finalTotal = Math.max(0, totalCalculated - discount);
     const paidAmount = row.paymentState === "unpaid" 
       ? 0 
       : row.isPartialPayment 
         ? parseFloat(row.partialPaidAmount) || 0 
         : finalTotal;
     const unpaidBalance = Math.max(0, finalTotal - paidAmount);
-    return { total, discount, finalTotal, paidAmount, unpaidBalance };
+    return { ticketSubtotal, addonsSubtotal, totalCalculated, discount, finalTotal, paidAmount, unpaidBalance };
   };
 
   const summary = rows.reduce(
@@ -141,7 +185,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       const p = getRowPricing(row);
       return {
         totalPax: sum.totalPax + (parseInt(row.adultCount, 10) || 1) + (parseInt(row.childCount, 10) || 0),
-        totalGross: sum.totalGross + p.total,
+        totalGross: sum.totalGross + p.totalCalculated,
         totalDiscounts: sum.totalDiscounts + p.discount,
         totalFinal: sum.totalFinal + p.finalTotal,
         totalPaid: sum.totalPaid + p.paidAmount,
@@ -166,6 +210,10 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
         return;
       }
       const pricing = getRowPricing(row);
+      if (pricing.discount > 0 && !row.discountReason.trim()) {
+        toast.error(`Please enter a discount reason for row ${i + 1}.`);
+        return;
+      }
       if (row.isPartialPayment) {
         const deposit = parseFloat(row.partialPaidAmount) || 0;
         if (deposit <= 0 || deposit > pricing.finalTotal) {
@@ -193,11 +241,16 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           primary_guest_name: row.guestName.trim(),
           primary_guest_email: row.guestEmail.trim() || undefined,
           primary_guest_phone: row.guestPhone.trim() || undefined,
-          discount_amount: pricing.discount,
+          custom_price_per_person: row.customAdultPrice ? parseFloat(row.customAdultPrice) : undefined,
+          custom_price_per_child: row.customChildPrice ? parseFloat(row.customChildPrice) : undefined,
+          discount_type: row.discountType,
+          discount_amount: pricing.discount, // Send computed flat discount amount for backwards compat if needed, but backend takes discount_value
+          discount_value: parseFloat(row.discountValue) || 0,
           discount_reason: row.discountReason.trim() || undefined,
           payment_method: row.paymentState,
           is_partial_payment: row.isPartialPayment,
           partial_paid_amount: row.isPartialPayment ? parseFloat(row.partialPaidAmount) : 0,
+          addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity })),
         };
       });
 
@@ -216,195 +269,322 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Scrollable table row wrapper */}
-      <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+      <div className="border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 min-w-[200px]">Voyage Selection</th>
-                <th className="px-4 py-3 min-w-[180px]">Primary Guest Name</th>
-                <th className="px-4 py-3 min-w-[150px]">Phone Number</th>
-                <th className="px-4 py-3 w-24">Adults</th>
-                <th className="px-4 py-3 w-24">Kids</th>
-                <th className="px-4 py-3 min-w-[140px]">Discount (KES)</th>
+                <th className="px-4 py-3 min-w-[160px]">Voyage Selection</th>
+                <th className="px-4 py-3 min-w-[150px]">Primary Guest</th>
+                <th className="px-4 py-3 min-w-[120px]">Phone Number</th>
+                <th className="px-4 py-3 min-w-[100px]">Guests</th>
+                <th className="px-4 py-3 min-w-[120px]">Custom Pricing</th>
+                <th className="px-4 py-3 min-w-[140px]">Discount & Reason</th>
                 <th className="px-4 py-3 min-w-[120px]">Payment</th>
-                <th className="px-4 py-3 text-center w-16">Del</th>
+                <th className="px-4 py-3 text-center w-24">Add-Ons</th>
+                <th className="px-4 py-3 text-center w-12">Del</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {rows.map((row, index) => {
                 const pricing = getRowPricing(row);
+                const hasAddons = row.selectedAddons.length > 0;
+                const isExpanded = expandedRowIndex === index;
+
                 return (
-                  <tr key={index} className="hover:bg-slate-50/50 transition-colors">
-                    {/* Voyage Dropdown */}
-                    <td className="px-4 py-3">
-                      <select
-                        disabled={isSaving || loadingSchedules}
-                        value={row.scheduleId}
-                        onChange={(e) => updateRow(index, "scheduleId", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white font-semibold text-slate-800"
-                      >
-                        {loadingSchedules ? (
-                          <option>Loading voyages...</option>
-                        ) : upcomingSchedules.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.dhow_name} — {s.date} ({s.meal_type_display})
-                          </option>
-                        ))}
-                      </select>
-                    </td>
+                  <React.Fragment key={index}>
+                    <tr className={`transition-colors ${isExpanded ? "bg-amber-50/30" : "hover:bg-slate-50/50"}`}>
+                      {/* Voyage Dropdown */}
+                      <td className="px-4 py-3 align-top">
+                        <select
+                          disabled={isSaving || loadingSchedules}
+                          value={row.scheduleId}
+                          onChange={(e) => updateRow(index, "scheduleId", e.target.value)}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white font-semibold text-slate-800"
+                        >
+                          {loadingSchedules ? (
+                            <option>Loading voyages...</option>
+                          ) : upcomingSchedules.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.dhow_name} — {s.date} ({s.meal_type_display})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
 
-                    {/* Guest Name & Optional Email */}
-                    <td className="px-4 py-3 space-y-1">
-                      <input
-                        type="text"
-                        required
-                        disabled={isSaving}
-                        placeholder="John Doe"
-                        value={row.guestName}
-                        onChange={(e) => updateRow(index, "guestName", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                      />
-                      <input
-                        type="email"
-                        disabled={isSaving}
-                        placeholder="Email (Optional)"
-                        value={row.guestEmail}
-                        onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
-                        className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 text-slate-500"
-                      />
-                    </td>
-
-                    {/* Phone Number */}
-                    <td className="px-4 py-3">
-                      <input
-                        type="tel"
-                        disabled={isSaving}
-                        placeholder="e.g. 0712345678"
-                        value={row.guestPhone}
-                        onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                      />
-                    </td>
-
-                    {/* Adults Count */}
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="1"
-                        max="50"
-                        required
-                        disabled={isSaving}
-                        value={row.adultCount}
-                        onChange={(e) => updateRow(index, "adultCount", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                      />
-                    </td>
-
-                    {/* Children Count */}
-                    <td className="px-4 py-3">
-                      <input
-                        type="number"
-                        min="0"
-                        max="50"
-                        required
-                        disabled={isSaving}
-                        value={row.childCount}
-                        onChange={(e) => updateRow(index, "childCount", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                      />
-                    </td>
-
-                    {/* Discount Input & Reason */}
-                    <td className="px-4 py-3 space-y-1">
-                      <input
-                        type="number"
-                        min="0"
-                        disabled={isSaving}
-                        value={row.discountAmount}
-                        onChange={(e) => updateRow(index, "discountAmount", e.target.value)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                      />
-                      {pricing.discount > 0 && (
+                      {/* Guest Name & Optional Email */}
+                      <td className="px-4 py-3 space-y-1 align-top">
                         <input
                           type="text"
                           required
                           disabled={isSaving}
-                          placeholder="Reason required"
-                          value={row.discountReason}
-                          onChange={(e) => updateRow(index, "discountReason", e.target.value)}
-                          className="w-full px-2 py-1 text-[10px] border border-rose-200 rounded-md focus:ring-1 focus:ring-rose-500/20 bg-rose-50/20 text-rose-800"
+                          placeholder="John Doe"
+                          value={row.guestName}
+                          onChange={(e) => updateRow(index, "guestName", e.target.value)}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
                         />
-                      )}
-                    </td>
+                        <input
+                          type="email"
+                          disabled={isSaving}
+                          placeholder="Email (Optional)"
+                          value={row.guestEmail}
+                          onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
+                          className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 text-slate-500"
+                        />
+                      </td>
 
-                    {/* Payment Settings */}
-                    <td className="px-4 py-3 space-y-1.5">
-                      <select
-                        disabled={isSaving}
-                        value={row.paymentState}
-                        onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
-                        className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white"
-                      >
-                        <option value="cash">Paid — Cash</option>
-                        <option value="mpesa">Paid — M-Pesa</option>
-                        <option value="agent_credit">Agent Credit</option>
-                        <option value="waived">Waived</option>
-                        <option value="unpaid">Unpaid</option>
-                      </select>
+                      {/* Phone Number */}
+                      <td className="px-4 py-3 align-top">
+                        <input
+                          type="tel"
+                          disabled={isSaving}
+                          placeholder="e.g. 0712345678"
+                          value={row.guestPhone}
+                          onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
+                        />
+                      </td>
 
-                      {row.paymentState !== "unpaid" && (
-                        <div className="flex flex-col gap-1 p-1 bg-slate-50 border border-slate-200/80 rounded-md text-[10px]">
-                          <label className="flex items-center gap-1 cursor-pointer select-none font-medium">
-                            <input
-                              type="checkbox"
-                              disabled={isSaving}
-                              checked={row.isPartialPayment}
-                              onChange={(e) => {
-                                updateRow(index, "isPartialPayment", e.target.checked);
-                                if (e.target.checked && !row.partialPaidAmount) {
-                                  updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
-                                }
-                              }}
-                              className="rounded text-amber-600 focus:ring-amber-500 w-3 h-3"
-                            />
-                            Partial Deposit
-                          </label>
-
-                          {row.isPartialPayment && (
-                            <div className="mt-1 space-y-0.5">
-                              <span className="text-[9px] text-slate-400 font-bold uppercase">Amount Paid Today</span>
-                              <input
-                                type="number"
-                                min="1"
-                                max={pricing.finalTotal}
-                                required
-                                disabled={isSaving}
-                                value={row.partialPaidAmount}
-                                onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
-                                className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px]"
-                              />
-                              <div className="text-[8px] text-amber-700 font-medium">
-                                Bal: KES {pricing.unpaidBalance.toLocaleString()}
-                              </div>
-                            </div>
-                          )}
+                      {/* Pax Count */}
+                      <td className="px-4 py-3 space-y-1 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">A</span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="50"
+                            required
+                            disabled={isSaving}
+                            value={row.adultCount}
+                            onChange={(e) => updateRow(index, "adultCount", e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
+                          />
                         </div>
-                      )}
-                    </td>
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">K</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max="50"
+                            required
+                            disabled={isSaving}
+                            value={row.childCount}
+                            onChange={(e) => updateRow(index, "childCount", e.target.value)}
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
+                          />
+                        </div>
+                      </td>
 
-                    {/* Delete button */}
-                    <td className="px-4 py-3 text-center">
-                      <button
-                        type="button"
-                        disabled={isSaving}
-                        onClick={() => removeRow(index)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                      {/* Custom Pricing */}
+                      <td className="px-4 py-3 space-y-1 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">A</span>
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={isSaving}
+                            placeholder="Standard"
+                            value={row.customAdultPrice}
+                            onChange={(e) => updateRow(index, "customAdultPrice", e.target.value)}
+                            className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-amber-50/20 text-slate-700"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">K</span>
+                          <input
+                            type="number"
+                            min="0"
+                            disabled={isSaving}
+                            placeholder="Standard"
+                            value={row.customChildPrice}
+                            onChange={(e) => updateRow(index, "customChildPrice", e.target.value)}
+                            className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-amber-50/20 text-slate-700"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Discount Input & Reason */}
+                      <td className="px-4 py-3 space-y-1 align-top">
+                        <div className="flex gap-1">
+                          <select
+                            disabled={isSaving}
+                            value={row.discountType}
+                            onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
+                            className="w-16 px-1 py-1 border border-slate-200 rounded-md bg-slate-50 text-[10px] font-semibold text-slate-700"
+                          >
+                            <option value="amount">KES</option>
+                            <option value="percentage">%</option>
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            max={row.discountType === "percentage" ? 100 : undefined}
+                            disabled={isSaving}
+                            value={row.discountValue}
+                            onChange={(e) => updateRow(index, "discountValue", e.target.value)}
+                            className="flex-1 px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
+                          />
+                        </div>
+                        {pricing.discount > 0 && (
+                          <input
+                            type="text"
+                            required
+                            disabled={isSaving}
+                            placeholder="Reason required"
+                            value={row.discountReason}
+                            onChange={(e) => updateRow(index, "discountReason", e.target.value)}
+                            className="w-full px-2 py-1 text-[10px] border border-rose-200 rounded-md focus:ring-1 focus:ring-rose-500/20 bg-rose-50/20 text-rose-800"
+                          />
+                        )}
+                      </td>
+
+                      {/* Payment Settings */}
+                      <td className="px-4 py-3 space-y-1.5 align-top">
+                        <select
+                          disabled={isSaving}
+                          value={row.paymentState}
+                          onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
+                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white"
+                        >
+                          <option value="cash">Paid — Cash</option>
+                          <option value="mpesa">Paid — M-Pesa</option>
+                          <option value="agent_credit">Agent Credit</option>
+                          <option value="waived">Waived</option>
+                          <option value="unpaid">Unpaid</option>
+                        </select>
+
+                        {row.paymentState !== "unpaid" && (
+                          <div className="flex flex-col gap-1 p-1 bg-slate-50 border border-slate-200/80 rounded-md text-[10px]">
+                            <label className="flex items-center gap-1 cursor-pointer select-none font-medium">
+                              <input
+                                type="checkbox"
+                                disabled={isSaving}
+                                checked={row.isPartialPayment}
+                                onChange={(e) => {
+                                  updateRow(index, "isPartialPayment", e.target.checked);
+                                  if (e.target.checked && !row.partialPaidAmount) {
+                                    updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
+                                  }
+                                }}
+                                className="rounded text-amber-600 focus:ring-amber-500 w-3 h-3"
+                              />
+                              Deposit
+                            </label>
+
+                            {row.isPartialPayment && (
+                              <div className="mt-1 space-y-0.5">
+                                <span className="text-[9px] text-slate-400 font-bold uppercase">Amount Paid Today</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={pricing.finalTotal}
+                                  required
+                                  disabled={isSaving}
+                                  value={row.partialPaidAmount}
+                                  onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
+                                  className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px]"
+                                />
+                                <div className="text-[8px] text-amber-700 font-medium truncate">
+                                  Bal: KES {pricing.unpaidBalance.toLocaleString()}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Addons Toggler */}
+                      <td className="px-4 py-3 text-center align-top">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedRowIndex(isExpanded ? null : index)}
+                          className={`flex items-center gap-1 mx-auto px-2 py-1.5 rounded border text-[10px] font-bold transition-colors ${
+                            hasAddons ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          {row.selectedAddons.reduce((acc, curr) => acc + curr.quantity, 0) || "Add"}
+                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        </button>
+                      </td>
+
+                      {/* Delete button */}
+                      <td className="px-4 py-3 text-center align-top">
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          onClick={() => removeRow(index)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    {/* EXPANDED ROW FOR ADDONS AND SPECIAL REQUESTS */}
+                    {isExpanded && (
+                      <tr className="bg-amber-50/20">
+                        <td colSpan={9} className="px-4 py-4 border-t border-slate-200/50">
+                          <div className="flex flex-col sm:flex-row gap-6 max-w-5xl">
+                            {/* Special Requests */}
+                            <div className="flex-1 space-y-2">
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase">Special Dietary / Voyage Requests</label>
+                              <textarea
+                                disabled={isSaving}
+                                placeholder="e.g. Vegetarian diet, birthday setup..."
+                                value={row.specialRequests}
+                                onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 h-24 bg-white"
+                              />
+                            </div>
+                            
+                            {/* Addons Configurator */}
+                            <div className="flex-[2] space-y-2">
+                              <label className="block text-[10px] font-bold text-slate-500 uppercase">Optional Booking Add-ons</label>
+                              {addonsList.length === 0 ? (
+                                <div className="text-xs text-slate-400 italic py-2">No available addons registered in vessel management.</div>
+                              ) : (
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                  {addonsList.map((addon) => {
+                                    const qty = row.selectedAddons.find(a => a.id === addon.id)?.quantity || 0;
+                                    return (
+                                      <div key={addon.id} className="p-2 border border-slate-200 rounded-lg flex flex-col justify-between bg-white shadow-sm">
+                                        <div className="truncate mb-2">
+                                          <div className="text-[11px] font-bold text-slate-800 truncate">{addon.name}</div>
+                                          <div className="text-[9px] text-slate-500 font-semibold">KES {parseFloat(addon.price.toString()).toLocaleString()}</div>
+                                        </div>
+                                        <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                                          {qty > 0 ? (
+                                            <>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleRemoveAddon(index, addon.id)}
+                                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
+                                              >
+                                                <Minus className="w-3 h-3" />
+                                              </button>
+                                              <span className="text-[11px] font-extrabold text-slate-800 w-4 text-center">{qty}</span>
+                                            </>
+                                          ) : <div className="flex-1" />}
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAddAddon(index, addon)}
+                                            className="p-1 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 flex items-center justify-center ml-auto"
+                                          >
+                                            <Plus className="w-3 h-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>

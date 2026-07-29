@@ -66,9 +66,9 @@ export default function ManagerReportsPage() {
       .filter((b) => b.status === "confirmed" || b.status === "completed")
       .reduce((sum, b) => sum + parseFloat((b.total_paid || 0).toString()), 0);
 
-    // 1c. Outstanding Balances / Accounts Receivable (KES): sum of outstanding_balance for active bookings
+    // 1c. Outstanding Balances / Accounts Receivable (KES): sum of outstanding_balance for active/completed bookings
     const outstandingBalance = filteredBookings
-      .filter((b) => b.status === "confirmed" || b.status === "pending")
+      .filter((b) => b.status !== "cancelled" && b.status !== "no_show")
       .reduce((sum, b) => sum + parseFloat((b.outstanding_balance || 0).toString()), 0);
 
     // 1d. Total Discounts Granted (KES): sum of discount_amount for active bookings
@@ -126,7 +126,11 @@ export default function ManagerReportsPage() {
       "Vessel / Dhow",
       "Party Size",
       "Dining Menu",
+      "Custom Price Adult (KES)",
+      "Custom Price Child (KES)",
       "Total Cost (KES)",
+      "Discount Type",
+      "Discount Value",
       "Discount (KES)",
       "Cash Collected (KES)",
       "Outstanding Balance (KES)",
@@ -145,7 +149,11 @@ export default function ManagerReportsPage() {
         sched?.dhow_name || "—",
         b.party_size,
         b.package_name || "Standard",
+        b.custom_price_per_person || "—",
+        b.custom_price_per_child || "—",
         b.total_amount,
+        b.discount_type || "amount",
+        b.discount_value || 0,
         b.discount_amount || 0,
         b.total_paid || 0,
         b.outstanding_balance || 0,

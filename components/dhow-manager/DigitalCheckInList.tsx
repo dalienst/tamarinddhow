@@ -8,7 +8,7 @@ import {
   CheckCircle2, 
   XCircle, 
   Clock, 
-  Printer, 
+  Download, 
   ChevronDown, 
   ChevronUp, 
   UserCheck, 
@@ -91,8 +91,27 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    const loadingToast = toast.loading("Generating PDF manifest...");
+    try {
+      // Call the Next.js proxy route — Django host is never exposed to the browser
+      const response = await fetch(`/api/manifest/${scheduleRef}/pdf`);
+      if (!response.ok) throw new Error("Failed to download PDF");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sailing-manifest-${scheduleRef}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF manifest downloaded successfully!", { id: loadingToast });
+    } catch (err) {
+      toast.error("Failed to generate PDF manifest.", { id: loadingToast });
+    }
   };
 
   const filteredBookings = bookings.filter((b) => {
@@ -130,10 +149,10 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
           </div>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors print:hidden"
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
           >
-            <Printer className="w-4 h-4" />
-            Print List
+            <Download className="w-4 h-4" />
+            Download PDF
           </button>
         </div>
       </div>

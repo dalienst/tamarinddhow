@@ -303,7 +303,7 @@ export default function DhowManagerDashboard() {
                     <td className="px-6 py-4.5">
                       <span className="font-semibold text-slate-800">{b.party_size} Pax</span>
                     </td>
-                    <td className="px-6 py-4.5 font-bold text-amber-750">
+                    <td className="px-6 py-4.5 font-bold text-amber-700">
                       KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}
                     </td>
                     <td className="px-6 py-4.5">
@@ -342,7 +342,7 @@ export default function DhowManagerDashboard() {
             <div className="relative">
               <button 
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                className="bg-amber-750 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-850 transition-all flex items-center gap-1"
+                className="bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-700 transition-all flex items-center gap-1"
               >
                 <UserPlus className="w-3.5 h-3.5" /> Add User
               </button>

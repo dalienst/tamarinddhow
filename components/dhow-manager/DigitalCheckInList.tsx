@@ -91,9 +91,27 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
     }
   };
 
-  const handlePrint = () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-    window.open(`${apiBase}/api/v1/schedules/${scheduleRef}/download-pdf/`, "_blank");
+  const handlePrint = async () => {
+    const loadingToast = toast.loading("Generating PDF manifest...");
+    try {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const response = await fetch(`${apiBase}/api/v1/schedules/${scheduleRef}/download-pdf/`);
+      if (!response.ok) throw new Error("Failed to download PDF");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sailing-manifest-${scheduleRef}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("PDF manifest downloaded successfully!", { id: loadingToast });
+    } catch (err) {
+      toast.error("Failed to generate PDF manifest.", { id: loadingToast });
+    }
   };
 
   const filteredBookings = bookings.filter((b) => {

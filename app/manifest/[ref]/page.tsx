@@ -227,8 +227,29 @@ export default function PublicManifestPage() {
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   Share Link
                 </button>
-                <button
-                  onClick={() => window.print()}
+                 <button
+                  onClick={async () => {
+                    const loadingToast = toast.loading("Generating PDF manifest...");
+                    try {
+                      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                      const response = await fetch(`${apiBase}/api/v1/schedules/${ref}/download-pdf/`);
+                      if (!response.ok) throw new Error("Failed to download PDF");
+                      
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `sailing-manifest-${ref}.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      window.URL.revokeObjectURL(url);
+                      
+                      toast.success("PDF manifest downloaded successfully!", { id: loadingToast });
+                    } catch (err) {
+                      toast.error("Failed to generate PDF manifest.", { id: loadingToast });
+                    }
+                  }}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md shadow-amber-500/10"
                 >
                   <Printer className="w-3.5 h-3.5" />

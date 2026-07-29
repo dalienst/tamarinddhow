@@ -38,6 +38,10 @@ export interface Booking {
   table?: string | null;
   table_number?: string | null;
   total_amount: string | number;
+  discount_amount?: string | number;
+  discount_reason?: string | null;
+  total_paid?: string | number;
+  outstanding_balance?: string | number;
   check_in_status?: CheckInStatus;
   booking_guests?: BookingGuest[];
   primary_guest_name?: string;

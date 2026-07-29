@@ -34,6 +34,10 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived">("cash");
+  const [discountAmount, setDiscountAmount] = useState("0");
+  const [discountReason, setDiscountReason] = useState("");
+  const [isPartialPayment, setIsPartialPayment] = useState(false);
+  const [partialPaidAmount, setPartialPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -51,6 +55,8 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
   const adults = parseInt(adultCount, 10) || 1;
   const children = parseInt(childCount, 10) || 0;
   const totalCalculated = (adults * adultPrice) + (children * childPrice);
+  const discount = parseFloat(discountAmount) || 0;
+  const finalTotal = Math.max(0, totalCalculated - discount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,7 +65,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
     
     setIsSaving(true);
     try {
-      // 1. Create Booking with primary guest details inline
+      // 1. Create Booking with primary guest details inline and discount info
       const booking = await createBooking(
         {
           schedule: selectedScheduleId,
@@ -74,20 +80,25 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
           primary_guest_name: guestName,
           primary_guest_email: guestEmail || undefined,
           primary_guest_phone: guestPhone || undefined,
+          discount_amount: discount,
+          discount_reason: discountReason || undefined,
         },
         token
       );
 
       // 2. Record Payment if paid (Walk-in payments bypass escrow)
       if (paymentState !== "unpaid") {
+        const payAmount = isPartialPayment ? (parseFloat(partialPaidAmount) || 0) : finalTotal;
         await createPayment(
           {
             booking: booking.id,
-            amount: totalCalculated,
+            amount: payAmount,
             payment_method: paymentState,
             status: "completed",
             phone_number: guestPhone || undefined,
-            notes: `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
+            notes: isPartialPayment 
+              ? `Walk-in partial deposit collected by manager via ${paymentState.toUpperCase()}. Remaining balance: KES ${(finalTotal - payAmount).toLocaleString()}`
+              : `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
           },
           token
         );
@@ -102,6 +113,10 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
       setChildCount("0");
       setTableRequest("");
       setSpecialRequests("");
+      setDiscountAmount("0");
+      setDiscountReason("");
+      setIsPartialPayment(false);
+      setPartialPaidAmount("");
       setPaymentState("cash");
       onSuccess();
     } catch (err: any) {
@@ -214,11 +229,19 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
 
           <div className="sm:col-span-2 bg-amber-50/55 border border-amber-200/50 rounded-xl p-3 text-xs text-amber-900 font-semibold space-y-1">
             <div className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Pricing Math Summary</div>
-            <div>
-              {adults} Adults x KES {adultPrice.toLocaleString()} + {children} Children x KES {childPrice.toLocaleString()}
+            <div className="flex justify-between">
+              <span>{adults} Adults x KES {adultPrice.toLocaleString()} + {children} Children x KES {childPrice.toLocaleString()}</span>
+              <span>KES {totalCalculated.toLocaleString()}</span>
             </div>
-            <div className="text-sm font-bold text-slate-900 mt-1">
-              Total Estimated: KES {totalCalculated.toLocaleString()}
+            {discount > 0 && (
+              <div className="flex justify-between text-rose-700">
+                <span>Discount applied</span>
+                <span>- KES {discount.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="text-sm font-bold text-slate-900 mt-1 pt-1 border-t border-amber-200/40 flex justify-between">
+              <span>Final Total Cost:</span>
+              <span>KES {finalTotal.toLocaleString()}</span>
             </div>
           </div>
 
@@ -245,6 +268,78 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
               onChange={(e) => setTableRequest(e.target.value)}
               className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
             />
+          </div>
+        </div>
+
+        {/* Discounts & Partial Payments */}
+        <div className="space-y-4 pt-4 border-t border-slate-100">
+          <h3 className="font-bold text-slate-800 text-sm">Discounts & Partial Payments</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Discount Amount (KES)</label>
+              <input
+                type="number"
+                min="0"
+                disabled={isSaving}
+                placeholder="e.g. 1000"
+                value={discountAmount}
+                onChange={(e) => {
+                  setDiscountAmount(e.target.value);
+                  setIsPartialPayment(false);
+                  setPartialPaidAmount("");
+                }}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Discount Reason</label>
+              <input
+                type="text"
+                disabled={isSaving}
+                placeholder="e.g. Manager approval, VIP guest"
+                value={discountReason}
+                onChange={(e) => setDiscountReason(e.target.value)}
+                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white"
+              />
+            </div>
+
+            {paymentState !== "unpaid" && (
+              <div className="sm:col-span-2 space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    disabled={isSaving}
+                    checked={isPartialPayment}
+                    onChange={(e) => {
+                      setIsPartialPayment(e.target.checked);
+                      if (e.target.checked && !partialPaidAmount) {
+                        setPartialPaidAmount(Math.floor(finalTotal / 2).toString());
+                      }
+                    }}
+                    className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
+                  />
+                  This is a partial payment (Guest will pay a deposit)
+                </label>
+
+                {isPartialPayment && (
+                  <div className="pt-1">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Amount Paid Today (KES)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max={finalTotal}
+                      disabled={isSaving}
+                      value={partialPaidAmount}
+                      onChange={(e) => setPartialPaidAmount(e.target.value)}
+                      className="w-full sm:w-48 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white"
+                    />
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Remaining unpaid balance of KES {Math.max(0, finalTotal - (parseFloat(partialPaidAmount) || 0)).toLocaleString()} will be due later.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

@@ -56,10 +56,25 @@ export default function ManagerReportsPage() {
 
   // Aggregated Stat Calculations
   const stats = useMemo(() => {
-    // 1. Gross Revenue (KES): confirmed/completed bookings total
+    // 1. Gross Revenue (KES): confirmed/completed bookings total expected billing
     const grossRevenue = filteredBookings
       .filter((b) => b.status === "confirmed" || b.status === "completed")
       .reduce((sum, b) => sum + parseFloat((b.total_amount || 0).toString()), 0);
+
+    // 1b. Actual Cash Collected (KES): sum of total_paid for confirmed/completed bookings
+    const cashCollected = filteredBookings
+      .filter((b) => b.status === "confirmed" || b.status === "completed")
+      .reduce((sum, b) => sum + parseFloat((b.total_paid || 0).toString()), 0);
+
+    // 1c. Outstanding Balances / Accounts Receivable (KES): sum of outstanding_balance for active bookings
+    const outstandingBalance = filteredBookings
+      .filter((b) => b.status === "confirmed" || b.status === "pending")
+      .reduce((sum, b) => sum + parseFloat((b.outstanding_balance || 0).toString()), 0);
+
+    // 1d. Total Discounts Granted (KES): sum of discount_amount for active bookings
+    const totalDiscounts = filteredBookings
+      .filter((b) => b.status !== "cancelled")
+      .reduce((sum, b) => sum + parseFloat((b.discount_amount || 0).toString()), 0);
 
     // 2. Occupancy rate (%): (sum of actual passengers / sum of vessel capacities)
     let totalCap = 0;
@@ -85,6 +100,9 @@ export default function ManagerReportsPage() {
 
     return {
       grossRevenue,
+      cashCollected,
+      outstandingBalance,
+      totalDiscounts,
       avgOccupancy,
       quotaFulfillment,
       refundRate,
@@ -108,7 +126,10 @@ export default function ManagerReportsPage() {
       "Vessel / Dhow",
       "Party Size",
       "Dining Menu",
-      "Amount Paid (KES)",
+      "Total Cost (KES)",
+      "Discount (KES)",
+      "Cash Collected (KES)",
+      "Outstanding Balance (KES)",
       "Booking Status",
       "Cancellation Choice"
     ];
@@ -125,6 +146,9 @@ export default function ManagerReportsPage() {
         b.party_size,
         b.package_name || "Standard",
         b.total_amount,
+        b.discount_amount || 0,
+        b.total_paid || 0,
+        b.outstanding_balance || 0,
         b.status_display || b.status,
         b.cancellation_preference
       ];
@@ -242,12 +266,59 @@ export default function ManagerReportsPage() {
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
             <span>Total Gross Revenue</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+            <DollarSign className="w-4 h-4 text-slate-500" />
           </div>
           <div className="text-3xl font-extrabold text-slate-900">
             KES {stats.grossRevenue.toLocaleString()}
           </div>
-          <span className="text-xs text-slate-500 font-medium">From verified confirmed sailings</span>
+          <span className="text-xs text-slate-500 font-medium">Total expected booking value</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <span>Actual Cash Collected</span>
+            <DollarSign className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-emerald-700">
+            KES {stats.cashCollected.toLocaleString()}
+          </div>
+          <span className="text-xs text-emerald-600/90 font-medium">Total realized cash collections</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <span>Outstanding Receivable</span>
+            <DollarSign className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-amber-700">
+            KES {stats.outstandingBalance.toLocaleString()}
+          </div>
+          <span className="text-xs text-amber-600 font-medium">Expected remaining due balances</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <span>Discounts Allowed</span>
+            <DollarSign className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-rose-700">
+            KES {stats.totalDiscounts.toLocaleString()}
+          </div>
+          <span className="text-xs text-rose-500 font-medium">Total discounts applied to voyages</span>
+        </div>
+      </div>
+
+      {/* OPERATIONAL RATIOS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
+            <span>Avg Occupancy Rate</span>
+            <BarChart3 className="w-4 h-4 text-indigo-600" />
+          </div>
+          <div className="text-3xl font-extrabold text-slate-900">
+            {stats.avgOccupancy.toFixed(1)}%
+          </div>
+          <span className="text-xs text-slate-500 font-medium">Capacity filled across selected period</span>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
@@ -308,10 +379,11 @@ export default function ManagerReportsPage() {
                   <th className="px-6 py-3.5">Reference</th>
                   <th className="px-6 py-3.5">Guest & Contact</th>
                   <th className="px-6 py-3.5">Voyage Date</th>
-                  <th className="px-6 py-3.5">Dhow</th>
                   <th className="px-6 py-3.5 text-center">Pax</th>
-                  <th className="px-6 py-3.5">Amount</th>
-                  <th className="px-6 py-3.5">Type</th>
+                  <th className="px-6 py-3.5">Total Cost</th>
+                  <th className="px-6 py-3.5">Discount</th>
+                  <th className="px-6 py-3.5">Paid</th>
+                  <th className="px-6 py-3.5">Balance</th>
                   <th className="px-6 py-3.5">Status</th>
                 </tr>
               </thead>
@@ -328,15 +400,20 @@ export default function ManagerReportsPage() {
                       <td className="px-6 py-4 font-semibold text-slate-500 text-xs">
                         {b.schedule_date || "—"}
                       </td>
-                      <td className="px-6 py-4 font-bold text-slate-800 text-xs">
-                        {sched?.dhow_name || "—"}
-                      </td>
                       <td className="px-6 py-4 font-bold text-slate-800 text-center">{b.party_size}</td>
-                      <td className="px-6 py-4 font-extrabold text-amber-700">
+                      <td className="px-6 py-4 font-bold text-slate-800">
                         KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-400">
-                        {b.booking_type.replace("_", " ")}
+                      <td className="px-6 py-4 font-semibold text-rose-700">
+                        {parseFloat((b.discount_amount || 0).toString()) > 0 
+                          ? `KES ${parseFloat((b.discount_amount || 0).toString()).toLocaleString()}` 
+                          : "—"}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-emerald-700">
+                        KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-amber-700">
+                        KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${

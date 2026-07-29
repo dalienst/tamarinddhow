@@ -1,19 +1,28 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { createBooking } from "@/services/bookings";
+import { createBooking, updateBooking } from "@/services/bookings";
 import { createPayment } from "@/services/payments";
 import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign, Plus, Minus, ShoppingBag } from "lucide-react";
 import toast from "react-hot-toast";
+import { Booking } from "@/types/booking";
 
 interface WalkInBookingFormProps {
   token: string;
   onSuccess: () => void;
   initialScheduleId?: string;
+  bookingToEdit?: Booking;
 }
 
-export default function WalkInBookingForm({ token, onSuccess, initialScheduleId }: WalkInBookingFormProps) {
+interface SelectedAddonItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export default function WalkInBookingForm({ token, onSuccess, initialScheduleId, bookingToEdit }: WalkInBookingFormProps) {
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ is_open: true });
   const { data: addonsData, isLoading: loadingAddons } = useFetchAddOns();
@@ -48,19 +57,45 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
   const [discountReason, setDiscountReason] = useState("");
 
   // Selected addons
-  const [selectedAddons, setSelectedAddons] = useState<{ id: string; name: string; price: number; quantity: number }[]>([]);
+  const [selectedAddons, setSelectedAddons] = useState<SelectedAddonItem[]>([]);
 
   const [isPartialPayment, setIsPartialPayment] = useState(false);
   const [partialPaidAmount, setPartialPaidAmount] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (initialScheduleId) {
+    if (bookingToEdit) {
+      setSelectedScheduleId(bookingToEdit.schedule);
+      setGuestName(bookingToEdit.primary_guest_name || bookingToEdit.booked_by_name || "");
+      setGuestEmail(bookingToEdit.primary_guest_email || "");
+      setGuestPhone(bookingToEdit.primary_guest_phone || "");
+      setAdultCount(bookingToEdit.adult_count?.toString() || "2");
+      setChildCount(bookingToEdit.child_count?.toString() || "0");
+      setCustomAdultPrice(bookingToEdit.custom_price_per_person?.toString() || "");
+      setCustomChildPrice(bookingToEdit.custom_price_per_child?.toString() || "");
+      setDiscountType(bookingToEdit.discount_type || "amount");
+      setDiscountValue(bookingToEdit.discount_value?.toString() || "0");
+      setDiscountReason(bookingToEdit.discount_reason || "");
+      setTableRequest(bookingToEdit.table_request || "");
+      setSpecialRequests(bookingToEdit.special_requests || "");
+      setCancellationPreference(bookingToEdit.cancellation_preference);
+      
+      if (bookingToEdit.booking_addons) {
+        setSelectedAddons(
+          bookingToEdit.booking_addons.map((ba) => ({
+            id: ba.addon,
+            name: ba.addon_name || "Extra Onboard Item",
+            price: parseFloat(ba.unit_price.toString()),
+            quantity: ba.quantity
+          }))
+        );
+      }
+    } else if (initialScheduleId) {
       setSelectedScheduleId(initialScheduleId);
     } else if (upcomingSchedules.length > 0 && !selectedScheduleId) {
       setSelectedScheduleId(upcomingSchedules[0].id);
     }
-  }, [upcomingSchedules, selectedScheduleId, initialScheduleId]);
+  }, [upcomingSchedules, selectedScheduleId, initialScheduleId, bookingToEdit]);
 
   // Compute pricing dynamically
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
@@ -74,7 +109,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
   const children = parseInt(childCount, 10) || 0;
   
   const ticketSubtotal = (adults * effectiveAdultPrice) + (children * effectiveChildPrice);
-  const addonsSubtotal = selectedAddons.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const addonsSubtotal = selectedAddons.reduce((sum: number, item: SelectedAddonItem) => sum + (item.price * item.quantity), 0);
   const totalCalculated = ticketSubtotal + addonsSubtotal;
 
   const discount = discountType === "percentage"
@@ -85,10 +120,10 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
 
   // Addon handlers
   const handleAddAddon = (addon: any) => {
-    setSelectedAddons((prev) => {
-      const existing = prev.find((item) => item.id === addon.id);
+    setSelectedAddons((prev: SelectedAddonItem[]) => {
+      const existing = prev.find((item: SelectedAddonItem) => item.id === addon.id);
       if (existing) {
-        return prev.map((item) =>
+        return prev.map((item: SelectedAddonItem) =>
           item.id === addon.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
@@ -97,20 +132,20 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
   };
 
   const handleRemoveAddon = (addonId: string) => {
-    setSelectedAddons((prev) => {
-      const existing = prev.find((item) => item.id === addonId);
+    setSelectedAddons((prev: SelectedAddonItem[]) => {
+      const existing = prev.find((item: SelectedAddonItem) => item.id === addonId);
       if (existing && existing.quantity > 1) {
-        return prev.map((item) =>
+        return prev.map((item: SelectedAddonItem) =>
           item.id === addonId ? { ...item, quantity: item.quantity - 1 } : item
         );
       }
-      return prev.filter((item) => item.id !== addonId);
+      return prev.filter((item: SelectedAddonItem) => item.id !== addonId);
     });
   };
 
   const handleUpdateAddonPrice = (addonId: string, priceStr: string) => {
-    setSelectedAddons((prev) =>
-      prev.map((item) =>
+    setSelectedAddons((prev: SelectedAddonItem[]) =>
+      prev.map((item: SelectedAddonItem) =>
         item.id === addonId ? { ...item, price: parseFloat(priceStr) || 0 } : item
       )
     );
@@ -130,51 +165,76 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
     
     setIsSaving(true);
     try {
-      // 1. Create Booking with primary guest details, custom price overrides, and addons list
-      const booking = await createBooking(
-        {
-          schedule: selectedScheduleId,
-          party_size: adults + children,
-          adult_count: adults,
-          child_count: children,
-          booking_type: "walk_in",
-          cancellation_preference: cancellationPreference,
-          table_request: tableRequest || undefined,
-          special_requests: specialRequests || undefined,
-          status: paymentState === "unpaid" ? "pending" : "confirmed",
-          primary_guest_name: guestName,
-          primary_guest_email: guestEmail || undefined,
-          primary_guest_phone: guestPhone || undefined,
-          custom_price_per_person: customAdultPrice ? parseFloat(customAdultPrice) : undefined,
-          custom_price_per_child: customChildPrice ? parseFloat(customChildPrice) : undefined,
-          discount_type: discountType,
-          discount_value: parseFloat(discountValue) || 0,
-          discount_reason: discountReason || undefined,
-          addons: selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
-        },
-        token
-      );
-
-      // 2. Record Payment if paid (Walk-in payments bypass escrow)
-      if (paymentState !== "unpaid") {
-        const payAmount = isPartialPayment ? (parseFloat(partialPaidAmount) || 0) : finalTotal;
-        await createPayment(
+      let booking;
+      if (bookingToEdit) {
+        booking = await updateBooking(
+          bookingToEdit.reference,
           {
-            booking: booking.id,
-            amount: payAmount,
-            payment_method: paymentState,
-            status: "completed",
-            phone_number: guestPhone || undefined,
-            transaction_ref: transactionRef.trim() || undefined,
-            notes: isPartialPayment 
-              ? `Walk-in partial deposit collected by manager via ${paymentState.toUpperCase()}. Remaining balance: KES ${(finalTotal - payAmount).toLocaleString()}`
-              : `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
+            schedule: selectedScheduleId,
+            party_size: adults + children,
+            adult_count: adults,
+            child_count: children,
+            cancellation_preference: cancellationPreference,
+            table_request: tableRequest || undefined,
+            special_requests: specialRequests || undefined,
+            primary_guest_name: guestName,
+            primary_guest_email: guestEmail || undefined,
+            primary_guest_phone: guestPhone || undefined,
+            custom_price_per_person: customAdultPrice ? parseFloat(customAdultPrice) : undefined,
+            custom_price_per_child: customChildPrice ? parseFloat(customChildPrice) : undefined,
+            discount_type: discountType,
+            discount_value: parseFloat(discountValue) || 0,
+            discount_reason: discountReason || undefined,
+            addons: selectedAddons.map((sa: SelectedAddonItem) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
           },
           token
         );
-      }
+        toast.success(`Booking ${booking.reference} updated successfully!`);
+      } else {
+        booking = await createBooking(
+          {
+            schedule: selectedScheduleId,
+            party_size: adults + children,
+            adult_count: adults,
+            child_count: children,
+            booking_type: "walk_in",
+            cancellation_preference: cancellationPreference,
+            table_request: tableRequest || undefined,
+            special_requests: specialRequests || undefined,
+            status: paymentState === "unpaid" ? "pending" : "confirmed",
+            primary_guest_name: guestName,
+            primary_guest_email: guestEmail || undefined,
+            primary_guest_phone: guestPhone || undefined,
+            custom_price_per_person: customAdultPrice ? parseFloat(customAdultPrice) : undefined,
+            custom_price_per_child: customChildPrice ? parseFloat(customChildPrice) : undefined,
+            discount_type: discountType,
+            discount_value: parseFloat(discountValue) || 0,
+            discount_reason: discountReason || undefined,
+            addons: selectedAddons.map((sa: SelectedAddonItem) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
+          },
+          token
+        );
 
-      toast.success(`Walk-in booking ${booking.reference} registered successfully!`);
+        // 2. Record Payment if paid (Walk-in payments bypass escrow)
+        if (paymentState !== "unpaid") {
+          const payAmount = isPartialPayment ? (parseFloat(partialPaidAmount) || 0) : finalTotal;
+          await createPayment(
+            {
+              booking: booking.id,
+              amount: payAmount,
+              payment_method: paymentState,
+              status: "completed",
+              phone_number: guestPhone || undefined,
+              transaction_ref: transactionRef.trim() || undefined,
+              notes: isPartialPayment 
+                ? `Walk-in partial deposit collected by manager via ${paymentState.toUpperCase()}. Remaining balance: KES ${(finalTotal - payAmount).toLocaleString()}`
+                : `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
+            },
+            token
+          );
+        }
+        toast.success(`Walk-in booking ${booking.reference} registered successfully!`);
+      }
       // Reset form states
       setGuestName("");
       setGuestEmail("");
@@ -340,8 +400,8 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
             {selectedAddons.length > 0 && (
               <div className="space-y-1 pt-1 border-t border-amber-200/25">
                 <span className="text-[9px] text-slate-500 uppercase font-bold block">Add-ons subtotal:</span>
-                {selectedAddons.map((item) => (
-                  <div key={item.id} className="flex justify-between font-medium text-slate-700">
+                {selectedAddons.map((item: SelectedAddonItem) => (
+                  <div key={item.id} className="flex justify-between font-medium text-slate-700 font-semibold">
                     <span>— {item.name} (x{item.quantity})</span>
                     <span>KES {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
@@ -450,7 +510,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
                       <input
                         type="number"
                         min="0"
-                        value={selectedAddons.find((item) => item.id === addon.id)?.price ?? ""}
+                        value={selectedAddons.find((item: SelectedAddonItem) => item.id === addon.id)?.price ?? ""}
                         onChange={(e) => handleUpdateAddonPrice(addon.id, e.target.value)}
                         className="w-full px-2 py-1 border border-slate-200 rounded text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-amber-500/20 bg-white"
                       />
@@ -575,59 +635,61 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
         </div>
       </div>
 
-      {/* EXPLICIT PAYMENT STATES */}
-      <div className="space-y-3 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border">
-        <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[
-            { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
-            { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
-            { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
-            { id: "waived", label: "Waived", desc: "Complimentary" },
-            { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
-          ].map((p) => (
-            <button
-              type="button"
-              key={p.id}
-              disabled={isSaving}
-              onClick={() => {
-                setPaymentState(p.id as any);
-                if (p.id === "unpaid") {
-                  setIsPartialPayment(false);
-                  setPartialPaidAmount("");
-                }
-              }}
-              className={`p-3 rounded-lg border text-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
-                paymentState === p.id
-                  ? "bg-amber-600 text-white border-amber-700 shadow-sm font-semibold"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-amber-400"
-              }`}
-            >
-              <div className="text-xs font-bold">{p.label}</div>
-              <div className={`text-[10px] ${paymentState === p.id ? "text-amber-100" : "text-slate-400"}`}>
-                {p.desc}
-              </div>
-            </button>
-          ))}
-        </div>
-        {paymentState !== "unpaid" && (
-          <div className="pt-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              {paymentState === "mpesa" ? "M-Pesa Transaction Reference / Code (Optional)" : "Transaction Reference / Code (Optional)"}
-            </label>
-            <input
-              type="text"
-              disabled={isSaving}
-              placeholder={paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No., Bank Ref"}
-              value={transactionRef}
-              onChange={(e) => setTransactionRef(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold text-slate-800 uppercase"
-            />
+      {/* EXPLICIT PAYMENT STATES (Only shown when creating new bookings) */}
+      {!bookingToEdit && (
+        <div className="space-y-3 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border">
+          <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
+              { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
+              { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
+              { id: "waived", label: "Waived", desc: "Complimentary" },
+              { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
+            ].map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                disabled={isSaving}
+                onClick={() => {
+                  setPaymentState(p.id as any);
+                  if (p.id === "unpaid") {
+                    setIsPartialPayment(false);
+                    setPartialPaidAmount("");
+                  }
+                }}
+                className={`p-3 rounded-lg border text-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                  paymentState === p.id
+                    ? "bg-amber-600 text-white border-amber-700 shadow-sm font-semibold"
+                    : "bg-white text-slate-700 border-slate-200 hover:border-amber-400"
+                }`}
+              >
+                <div className="text-xs font-bold">{p.label}</div>
+                <div className={`text-[10px] ${paymentState === p.id ? "text-amber-100" : "text-slate-400"}`}>
+                  {p.desc}
+                </div>
+              </button>
+            ))}
           </div>
-        )}
-      </div>
+          {paymentState !== "unpaid" && (
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                {paymentState === "mpesa" ? "M-Pesa Transaction Reference / Code (Optional)" : "Transaction Reference / Code (Optional)"}
+              </label>
+              <input
+                type="text"
+                disabled={isSaving}
+                placeholder={paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No., Bank Ref"}
+                value={transactionRef}
+                onChange={(e) => setTransactionRef(e.target.value)}
+                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold text-slate-800 uppercase"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Submit */}
       <button
@@ -640,6 +702,8 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
             <span className="w-5 h-5 border-2 border-white border-t-transparent animate-spin rounded-full" style={{ borderRadius: "50%" }} />
             Saving booking...
           </>
+        ) : bookingToEdit ? (
+          "Save Booking Changes"
         ) : (
           "Confirm & Save Walk-In Booking"
         )}

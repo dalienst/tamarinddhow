@@ -16,7 +16,8 @@ import {
   X, 
   CalendarDays,
   MenuSquare,
-  Loader2
+  Loader2,
+  Edit
 } from "lucide-react";
 import toast from "react-hot-toast";
 import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
@@ -31,6 +32,7 @@ export default function WalkInBookingPage() {
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
   const [selectedNewScheduleId, setSelectedNewScheduleId] = useState("");
   const [isSavingReschedule, setIsSavingReschedule] = useState(false);
@@ -221,6 +223,17 @@ export default function WalkInBookingPage() {
                           {active && (
                             <div className="flex items-center justify-end gap-1.5">
                               <button
+                                onClick={() => {
+                                  setEditingBooking(booking);
+                                  setIsFormOpen(true);
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                                title="Edit Booking Details"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-blue-600" />
+                                Edit
+                              </button>
+                              <button
                                 onClick={() => setRescheduleTarget(booking)}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
                                 title="Reschedule Guest Voyage"
@@ -263,6 +276,7 @@ export default function WalkInBookingPage() {
               onClick={() => {
                 setIsFormOpen(false);
                 setFormMode("single");
+                setEditingBooking(null);
               }}
               className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
             >
@@ -271,34 +285,40 @@ export default function WalkInBookingPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3 pr-10">
               <div className="flex items-center gap-2">
                 <UserPlus className="w-6 h-6 text-amber-600" />
-                <h2 className="text-xl font-bold text-slate-800">Register Walk-In Booking</h2>
+                <h2 className="text-xl font-bold text-slate-800">
+                  {editingBooking ? `Edit Booking Details (${editingBooking.reference})` : "Register Walk-In Booking"}
+                </h2>
               </div>
-              <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
-                <button
-                  onClick={() => setFormMode("single")}
-                  className={`px-3.5 py-1.5 rounded-md transition-all ${
-                    formMode === "single" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Single Guest Booking
-                </button>
-                <button
-                  onClick={() => setFormMode("bulk")}
-                  className={`px-3.5 py-1.5 rounded-md transition-all ${
-                    formMode === "bulk" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Bulk Group Entry
-                </button>
-              </div>
+              {!editingBooking && (
+                <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
+                  <button
+                    onClick={() => setFormMode("single")}
+                    className={`px-3.5 py-1.5 rounded-md transition-all ${
+                      formMode === "single" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Single Guest Booking
+                  </button>
+                  <button
+                    onClick={() => setFormMode("bulk")}
+                    className={`px-3.5 py-1.5 rounded-md transition-all ${
+                      formMode === "bulk" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    Bulk Group Entry
+                  </button>
+                </div>
+              )}
             </div>
             <div className="pt-2">
-              {formMode === "single" ? (
+              {editingBooking || formMode === "single" ? (
                 <WalkInBookingForm 
                   token={token} 
+                  bookingToEdit={editingBooking || undefined}
                   onSuccess={() => {
                     refetchWalkIns();
                     setIsFormOpen(false);
+                    setEditingBooking(null);
                   }} 
                 />
               ) : (

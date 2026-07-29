@@ -27,9 +27,8 @@ export default function ManifestPage() {
   const { data: bookingsData, isLoading: loadingBookings, refetch: refetchBookings } = useFetchBookings(
     schedule?.id ? { schedule: schedule.id } : undefined
   );
-  const { data: tablesData } = useFetchTables(schedule?.id);
+  const { data: tablesData, refetch: refetchTables } = useFetchTables(schedule?.id);
 
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -39,11 +38,10 @@ export default function ManifestPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [signedLink, setSignedLink] = useState("");
 
-  useEffect(() => {
-    if (bookingsData?.results) {
-      setBookings(bookingsData.results);
-    }
-  }, [bookingsData]);
+  const handleCombinedRefetch = () => {
+    refetchBookings();
+    refetchTables();
+  };
 
   const fetchShareUrl = async (): Promise<string> => {
     try {
@@ -232,10 +230,10 @@ export default function ManifestPage() {
 
       {/* Manifest List Component */}
       <DigitalCheckInList
-        bookings={bookings}
+        bookings={bookingsData?.results || []}
         tables={tablesData?.results || []}
         token={token}
-        onRefetch={refetchBookings}
+        onRefetch={handleCombinedRefetch}
         scheduleRef={scheduleRef}
         onStatusChange={handleStatusChange}
         disabled={isClosed}

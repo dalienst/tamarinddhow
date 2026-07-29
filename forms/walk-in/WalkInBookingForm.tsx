@@ -169,10 +169,9 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId 
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
             <input
               type="tel"
-              required
               disabled={isSaving}
               placeholder="e.g. 0712345678"
               value={guestPhone}

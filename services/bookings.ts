@@ -186,3 +186,15 @@ export const confirmReschedule = async (
   );
   return response.data;
 };
+
+export const createBookingBulk = async (
+  bookings: any[],
+  token: string
+): Promise<Booking[]> => {
+  const response: AxiosResponse<Booking[]> = await apiActions.post(
+    "/api/v1/bookings/bulk/",
+    { bookings },
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};

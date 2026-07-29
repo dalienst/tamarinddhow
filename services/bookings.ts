@@ -121,12 +121,16 @@ export const createBookingGuest = async (
 export const updateBookingGuest = async (
   id: string,
   data: Partial<BookingGuest>,
-  token: string
+  token: string,
+  isManifestToken?: boolean
 ): Promise<BookingGuest> => {
+  const headers = isManifestToken
+    ? { "X-Manifest-Token": token }
+    : { Authorization: `Token ${token}` };
   const response: AxiosResponse<BookingGuest> = await apiActions.patch(
     `/api/v1/booking-guests/${id}/`,
     data,
-    { headers: { Authorization: `Token ${token}` } }
+    { headers }
   );
   return response.data;
 };

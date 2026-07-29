@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { getPublicManifest } from "@/services/vessels";
-import { Ship, Printer, Search, Copy, Check, Clock, UserCheck, AlertTriangle } from "lucide-react";
+import { updateBookingGuest } from "@/services/bookings";
+import { Ship, Download, Search, Copy, Check, Clock, UserCheck, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface ManifestGuest {
@@ -46,6 +47,9 @@ interface PublicManifestResponse {
 
 export default function PublicManifestPage() {
   const { ref } = useParams() as { ref: string };
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
+
   const [data, setData] = useState<PublicManifestResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,7 +61,7 @@ export default function PublicManifestPage() {
 
   useEffect(() => {
     if (!ref) return;
-    getPublicManifest(ref)
+    getPublicManifest(ref, token)
       .then((res) => {
         setData(res);
         // Pre-populate boarded guests state based on database check-in status
@@ -73,12 +77,12 @@ export default function PublicManifestPage() {
       })
       .catch((err) => {
         console.error(err);
-        setError("Failed to load sailing manifest. Verify reference link.");
+        setError("Failed to load sailing manifest. Access token may be invalid or expired.");
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [ref]);
+  }, [ref, token]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -87,11 +91,27 @@ export default function PublicManifestPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleToggleBoarding = (guestId: string) => {
+  const handleToggleBoarding = async (guestId: string) => {
+    const isBoarded = !!boardedGuests[guestId];
+    const newStatus = isBoarded ? "pending" : "checked_in";
+
+    // Optimistic UI update
     setBoardedGuests((prev) => ({
       ...prev,
-      [guestId]: !prev[guestId],
+      [guestId]: !isBoarded,
     }));
+
+    try {
+      await updateBookingGuest(guestId, { status: newStatus }, token, true);
+      toast.success(isBoarded ? "Marked as absent" : "Checked in passenger successfully!");
+    } catch (err) {
+      // Revert optimistic update on failure
+      setBoardedGuests((prev) => ({
+        ...prev,
+        [guestId]: isBoarded,
+      }));
+      toast.error("Failed to update passenger status. Link token might be expired.");
+    }
   };
 
   const filteredManifest = useMemo(() => {
@@ -152,55 +172,9 @@ export default function PublicManifestPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
-      {/* CSS Print Stylesheet injected inline */}
-      <style jsx global>{`
-        @media print {
-          body {
-            background: white !important;
-            color: black !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-header {
-            display: block !important;
-          }
-          .manifest-card {
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-          }
-          .manifest-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-          }
-          .manifest-table th, .manifest-table td {
-            border: 1px solid #cbd5e1 !important;
-            padding: 8px !important;
-            font-size: 10px !important;
-            color: black !important;
-          }
-          .print-page-break {
-            page-break-inside: avoid !important;
-          }
-        }
-      `}</style>
+
 
       <div className="max-w-5xl mx-auto space-y-6">
-        {/* Print-only Official Header */}
-        <div className="hidden print-header text-center space-y-2 pb-6 border-b-2 border-slate-900">
-          <h1 className="text-xl font-black uppercase tracking-widest text-slate-900">Tamarind Dhow Mombasa</h1>
-          <p className="text-xs font-bold text-slate-700">Official Passenger Boarding Manifest</p>
-          <div className="grid grid-cols-3 gap-2 text-[10px] text-slate-800 mt-4 text-left border border-slate-300 p-3 rounded-lg">
-            <div><strong>Vessel:</strong> {schedule.dhow_name}</div>
-            <div><strong>Date:</strong> {schedule.date}</div>
-            <div><strong>Cruise:</strong> {schedule.meal_type_display}</div>
-            <div><strong>Departure:</strong> {schedule.departure_time.substring(0, 5)} - {schedule.return_time.substring(0, 5)}</div>
-            <div><strong>Total Guests:</strong> {stats.totalGuests}</div>
-            <div><strong>Boarded Count:</strong> {stats.checkedIn}</div>
-          </div>
-        </div>
 
         {/* Regular Header Panel */}
         <div className="no-print bg-gradient-to-r from-amber-900 to-amber-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
@@ -227,14 +201,17 @@ export default function PublicManifestPage() {
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   Share Link
                 </button>
-                 <button
+                <button
                   onClick={async () => {
                     const loadingToast = toast.loading("Generating PDF manifest...");
                     try {
-                      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                      const response = await fetch(`${apiBase}/api/v1/schedules/${ref}/download-pdf/`);
+                      // Call the Next.js proxy route — token is passed as query param for unauthenticated access
+                      const proxyUrl = token
+                        ? `/api/manifest/${ref}/pdf?token=${encodeURIComponent(token)}`
+                        : `/api/manifest/${ref}/pdf`;
+                      const response = await fetch(proxyUrl);
                       if (!response.ok) throw new Error("Failed to download PDF");
-                      
+
                       const blob = await response.blob();
                       const url = window.URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -244,7 +221,7 @@ export default function PublicManifestPage() {
                       a.click();
                       a.remove();
                       window.URL.revokeObjectURL(url);
-                      
+
                       toast.success("PDF manifest downloaded successfully!", { id: loadingToast });
                     } catch (err) {
                       toast.error("Failed to generate PDF manifest.", { id: loadingToast });
@@ -252,8 +229,8 @@ export default function PublicManifestPage() {
                   }}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl transition-all shadow-md shadow-amber-500/10"
                 >
-                  <Printer className="w-3.5 h-3.5" />
-                  Print Manifest
+                  <Download className="w-3.5 h-3.5" />
+                  Download PDF
                 </button>
               </div>
             </div>
@@ -294,39 +271,6 @@ export default function PublicManifestPage() {
 
         {/* Boarding List Card */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden manifest-card">
-          {/* Table view for print, interactive layout for screen */}
-          <div className="print-header hidden">
-            <table className="manifest-table">
-              <thead>
-                <tr>
-                  <th>Ref</th>
-                  <th>Primary Booker</th>
-                  <th>Pax</th>
-                  <th>Table</th>
-                  <th>Special Requests / Dietaries</th>
-                  <th>Boarding List</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.manifest.map((b) => {
-                  const tables = b.table_number || "—";
-                  const guestsList = b.booking_guests
-                    .map((g) => `${g.first_name} ${g.last_name} (${boardedGuests[g.id] ? "Boarded" : "Absent"})`)
-                    .join(", ");
-                  return (
-                    <tr key={b.id} className="print-page-break">
-                      <td><strong>{b.reference}</strong></td>
-                      <td>{b.booked_by_name}</td>
-                      <td>{b.party_size} pax</td>
-                      <td>{tables}</td>
-                      <td>{b.special_requests || "None"}</td>
-                      <td>{guestsList}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
 
           {/* Interactive Screen View */}
           <div className="no-print divide-y divide-slate-100">

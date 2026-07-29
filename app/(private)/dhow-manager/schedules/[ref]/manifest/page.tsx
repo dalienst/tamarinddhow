@@ -10,7 +10,7 @@ import { updateSchedule } from "@/services/vessels";
 import { useSession } from "next-auth/react";
 import { Booking } from "@/types/booking";
 import { DigitalCheckInList } from "@/components/dhow-manager/DigitalCheckInList";
-import { ArrowLeft, Lock, Check, Anchor, Share2 } from "lucide-react";
+import { ArrowLeft, Lock, Check, Anchor, Share2, Mail, Loader2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { Skeleton, SkeletonRow } from "@/components/common/Skeleton";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
@@ -33,11 +33,76 @@ export default function ManifestPage() {
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+  // Sharing states
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [signedLink, setSignedLink] = useState("");
+
   useEffect(() => {
     if (bookingsData?.results) {
       setBookings(bookingsData.results);
     }
   }, [bookingsData]);
+
+  const fetchShareUrl = async (): Promise<string> => {
+    try {
+      // Use Next.js proxy route — Django host never exposed to browser
+      const res = await fetch(`/api/manifest/${scheduleRef}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to generate link");
+      const data = await res.json();
+      setSignedLink(data.share_url);
+      return data.share_url;
+    } catch (err) {
+      toast.error("Failed to generate secure manifest share link.");
+      return "";
+    }
+  };
+
+  const handleOpenShareModal = async () => {
+    setIsShareModalOpen(true);
+    if (!signedLink) {
+      await fetchShareUrl();
+    }
+  };
+
+  const handleCopySignedLink = async () => {
+    let link = signedLink;
+    if (!link) {
+      link = await fetchShareUrl();
+    }
+    if (link) {
+      navigator.clipboard.writeText(link);
+      toast.success("Secure sharing link copied to clipboard!");
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailInput) {
+      toast.error("Please enter a valid supervisor email.");
+      return;
+    }
+    setIsSendingEmail(true);
+    try {
+      // Use Next.js proxy route — Django host never exposed to browser
+      const res = await fetch(`/api/manifest/${scheduleRef}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput }),
+      });
+      if (!res.ok) throw new Error("Failed to send email");
+      toast.success(`Manifest link successfully emailed to ${emailInput}`);
+      setIsShareModalOpen(false);
+      setEmailInput("");
+    } catch (err) {
+      toast.error("Failed to email manifest link to supervisor.");
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   if (loadingSchedule || loadingBookings) {
     return (
@@ -135,11 +200,7 @@ export default function ManifestPage() {
         <div className="flex items-center gap-2">
           {schedule && (
             <button
-              onClick={() => {
-                const publicUrl = `${window.location.origin}/manifest/${schedule.reference}`;
-                navigator.clipboard.writeText(publicUrl);
-                toast.success("Public manifest sharing link copied!");
-              }}
+              onClick={handleOpenShareModal}
               className="flex items-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm"
             >
               <Share2 className="w-4 h-4 text-slate-500" />
@@ -191,6 +252,78 @@ export default function ManifestPage() {
         onConfirm={handleConfirmClose}
         onCancel={() => setIsConfirmOpen(false)}
       />
+
+      {/* Share Modal Dialog */}
+      {isShareModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-xl border border-slate-200 space-y-6 relative">
+            <button
+              onClick={() => setIsShareModalOpen(false)}
+              className="absolute right-4 top-4 p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="space-y-1">
+              <h2 className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-amber-600" /> Share Crew Manifest
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                Generate a secure, single-day manifest access link or email it directly to docking supervisors.
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Supervisor Email Address
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="supervisor@tamarind.co.ke"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
+                  />
+                  <button
+                    onClick={handleSendEmail}
+                    disabled={isSendingEmail}
+                    className="bg-amber-600 text-white hover:bg-amber-700 disabled:bg-amber-700/80 px-4 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/10 disabled:cursor-not-allowed"
+                  >
+                    {isSendingEmail ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
+                    Send
+                  </button>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4 space-y-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Copy Access Link
+                </label>
+                <div className="flex gap-2 items-center bg-slate-50 border border-slate-200 rounded-xl p-1.5">
+                  <input
+                    type="text"
+                    readOnly
+                    value={signedLink || "Generating secure link..."}
+                    className="w-full bg-transparent border-none text-[10px] font-mono text-slate-500 truncate focus:outline-none px-2"
+                  />
+                  <button
+                    onClick={handleCopySignedLink}
+                    disabled={!signedLink}
+                    className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

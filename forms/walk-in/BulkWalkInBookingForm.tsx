@@ -149,6 +149,18 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     );
   };
 
+  const handleUpdateAddonPrice = (rowIndex: number, addonId: string, priceStr: string) => {
+    setRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== rowIndex) return row;
+        const selected = row.selectedAddons.map((item) =>
+          item.id === addonId ? { ...item, price: parseFloat(priceStr) || 0 } : item
+        );
+        return { ...row, selectedAddons: selected };
+      })
+    );
+  };
+
   // Helper pricing calculators for aggregate panel
   const getRowPricing = (row: BulkBookingRow) => {
     const s = schedules.find((sched) => sched.id === row.scheduleId);
@@ -250,7 +262,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           payment_method: row.paymentState,
           is_partial_payment: row.isPartialPayment,
           partial_paid_amount: row.isPartialPayment ? parseFloat(row.partialPaidAmount) : 0,
-          addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity })),
+          addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
         };
       });
 
@@ -547,33 +559,51 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                   {addonsList.map((addon) => {
                                     const qty = row.selectedAddons.find(a => a.id === addon.id)?.quantity || 0;
+                                    const selectedAddon = row.selectedAddons.find(a => a.id === addon.id);
                                     return (
-                                      <div key={addon.id} className="p-2 border border-slate-200 rounded-lg flex flex-col justify-between bg-white shadow-sm">
-                                        <div className="truncate mb-2">
-                                          <div className="text-[11px] font-bold text-slate-800 truncate">{addon.name}</div>
-                                          <div className="text-[9px] text-slate-500 font-semibold">KES {parseFloat(addon.price.toString()).toLocaleString()}</div>
+                                      <div key={addon.id} className={`p-2.5 border rounded-lg flex flex-col justify-between bg-white shadow-sm transition-all ${
+                                        qty > 0 ? "border-amber-400 bg-amber-50/5" : "border-slate-200"
+                                      }`}>
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="truncate">
+                                            <div className="text-[11px] font-bold text-slate-800 truncate">{addon.name}</div>
+                                            <div className="text-[9px] text-slate-500 font-medium">Std: KES {parseFloat(addon.price.toString()).toLocaleString()}</div>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                                            {qty > 0 ? (
+                                              <>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleRemoveAddon(index, addon.id)}
+                                                  className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
+                                                >
+                                                  <Minus className="w-3 h-3" />
+                                                </button>
+                                                <span className="text-[11px] font-extrabold text-slate-800 w-3 text-center">{qty}</span>
+                                              </>
+                                            ) : null}
+                                            <button
+                                              type="button"
+                                              onClick={() => handleAddAddon(index, addon)}
+                                              className="p-1 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 flex items-center justify-center"
+                                            >
+                                              <Plus className="w-3 h-3" />
+                                            </button>
+                                          </div>
                                         </div>
-                                        <div className="flex items-center justify-between border-t border-slate-100 pt-2">
-                                          {qty > 0 ? (
-                                            <>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleRemoveAddon(index, addon.id)}
-                                                className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
-                                              >
-                                                <Minus className="w-3 h-3" />
-                                              </button>
-                                              <span className="text-[11px] font-extrabold text-slate-800 w-4 text-center">{qty}</span>
-                                            </>
-                                          ) : <div className="flex-1" />}
-                                          <button
-                                            type="button"
-                                            onClick={() => handleAddAddon(index, addon)}
-                                            className="p-1 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 flex items-center justify-center ml-auto"
-                                          >
-                                            <Plus className="w-3 h-3" />
-                                          </button>
-                                        </div>
+
+                                        {qty > 0 && selectedAddon && (
+                                          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase whitespace-nowrap">Price:</span>
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              value={selectedAddon.price}
+                                              onChange={(e) => handleUpdateAddonPrice(index, addon.id, e.target.value)}
+                                              className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 bg-white"
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}

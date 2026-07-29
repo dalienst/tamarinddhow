@@ -27,6 +27,7 @@ interface BulkBookingRow {
   discountValue: string;
   discountReason: string;
   paymentState: "unpaid" | "cash" | "mpesa" | "agent_credit" | "waived";
+  transactionRef: string;
   isPartialPayment: boolean;
   partialPaidAmount: string;
   selectedAddons: { id: string; name: string; price: number; quantity: number }[];
@@ -60,6 +61,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     discountValue: "0",
     discountReason: "",
     paymentState: "cash",
+    transactionRef: "",
     isPartialPayment: false,
     partialPaidAmount: "",
     selectedAddons: [],
@@ -102,10 +104,11 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       prev.map((row, idx) => {
         if (idx === index) {
           const updatedRow = { ...row, [field]: value };
-          // If payment status becomes unpaid, turn off partial payments
+          // If payment status becomes unpaid, turn off partial payments and trans ref
           if (field === "paymentState" && value === "unpaid") {
             updatedRow.isPartialPayment = false;
             updatedRow.partialPaidAmount = "";
+            updatedRow.transactionRef = "";
           }
           if (field === "discountType") {
             updatedRow.discountValue = "0";
@@ -260,6 +263,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           discount_value: parseFloat(row.discountValue) || 0,
           discount_reason: row.discountReason.trim() || undefined,
           payment_method: row.paymentState,
+          transaction_ref: row.transactionRef.trim() || undefined,
           is_partial_payment: row.isPartialPayment,
           partial_paid_amount: row.isPartialPayment ? parseFloat(row.partialPaidAmount) : 0,
           addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
@@ -538,16 +542,34 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                       <tr className="bg-amber-50/20">
                         <td colSpan={9} className="px-4 py-4 border-t border-slate-200/50">
                           <div className="flex flex-col sm:flex-row gap-6 max-w-5xl">
-                            {/* Special Requests */}
-                            <div className="flex-1 space-y-2">
-                              <label className="block text-[10px] font-bold text-slate-500 uppercase">Special Dietary / Voyage Requests</label>
-                              <textarea
-                                disabled={isSaving}
-                                placeholder="e.g. Vegetarian diet, birthday setup..."
-                                value={row.specialRequests}
-                                onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 h-24 bg-white"
-                              />
+                            {/* Special Requests & Transaction Ref */}
+                            <div className="flex-1 space-y-3">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase">Special Dietary / Voyage Requests</label>
+                                <textarea
+                                  disabled={isSaving}
+                                  placeholder="e.g. Vegetarian diet, birthday setup..."
+                                  value={row.specialRequests}
+                                  onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
+                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 h-16 bg-white"
+                                />
+                              </div>
+
+                              {row.paymentState !== "unpaid" && (
+                                <div className="space-y-1">
+                                  <label className="block text-[10px] font-bold text-slate-500 uppercase">
+                                    {row.paymentState === "mpesa" ? "M-Pesa Transaction Reference Code" : "Transaction Reference / Code"}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    disabled={isSaving}
+                                    placeholder={row.paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No, bank ref"}
+                                    value={row.transactionRef}
+                                    onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 bg-white uppercase font-semibold text-slate-800"
+                                  />
+                                </div>
+                              )}
                             </div>
                             
                             {/* Addons Configurator */}

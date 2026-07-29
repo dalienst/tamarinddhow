@@ -14,7 +14,9 @@ import {
   HelpCircle,
   X,
   List,
-  Settings
+  Settings,
+  Clock,
+  Layers
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -34,6 +36,8 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: 'Finance & Escrow', href: '/dhow-manager/finance', icon: DollarSign },
     { name: 'Reports', href: '/dhow-manager/reports', icon: FileSpreadsheet },
     { name: 'Vessels', href: '/dhow-manager/vessels', icon: Ship },
+    { name: 'Dining Schedules', href: '/dhow-manager/dining-schedules', icon: Clock },
+    { name: 'Add-Ons', href: '/dhow-manager/addons', icon: Layers },
     { name: 'Scanner', href: '/dhow-manager/scanner', icon: QrCode },
     { name: 'Help Guide', href: '/dhow-manager/help', icon: HelpCircle },
     { name: 'Profile Settings', href: '/dhow-manager/profile', icon: Settings },

@@ -17,9 +17,7 @@ export async function GET(
   const { ref } = await params;
 
   // Build upstream headers
-  const upstreamHeaders: Record<string, string> = {
-    Accept: "application/pdf",
-  };
+  const upstreamHeaders: Record<string, string> = {};
 
   // 1. Try authenticated session token (manager portal)
   const session = await getServerSession(authOptions);

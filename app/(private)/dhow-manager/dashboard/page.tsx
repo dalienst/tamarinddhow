@@ -332,7 +332,7 @@ export default function DhowManagerDashboard() {
         </div>
 
         {/* Users Table Section */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 relative overflow-visible">
             <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
               <Users className="w-5 h-5 text-amber-600" /> User Registry

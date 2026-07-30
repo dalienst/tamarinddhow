@@ -30,7 +30,9 @@ export default function ManifestPage() {
   const { data: tablesData, refetch: refetchTables } = useFetchTables(schedule?.id);
 
   const [isClosingChecklist, setIsClosingChecklist] = useState(false);
+  const [isReopeningChecklist, setIsReopeningChecklist] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isReopenConfirmOpen, setIsReopenConfirmOpen] = useState(false);
 
   // Sharing states
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -164,6 +166,21 @@ export default function ManifestPage() {
     }
   };
 
+  const handleConfirmReopen = async () => {
+    setIsReopenConfirmOpen(false);
+    setIsReopeningChecklist(true);
+    try {
+      await updateSchedule(scheduleRef, { status: "confirmed", is_open: true }, token);
+      toast.success("Sailing checklist reopened successfully.");
+      refetchSchedule();
+      refetchBookings();
+    } catch (err) {
+      toast.error("Failed to reopen sailing checklist.");
+    } finally {
+      setIsReopeningChecklist(false);
+    }
+  };
+
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
       {/* Closed Banner Warning */}
@@ -225,6 +242,26 @@ export default function ManifestPage() {
               )}
             </button>
           )}
+
+          {schedule && isClosed && schedule.status !== "cancelled" && (
+            <button
+              onClick={() => setIsReopenConfirmOpen(true)}
+              disabled={isReopeningChecklist}
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
+            >
+              {isReopeningChecklist ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+                  Reopening...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  Reopen Sailing Checklist
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -242,13 +279,25 @@ export default function ManifestPage() {
       <ConfirmationModal
         isOpen={isConfirmOpen}
         title="Mark Dhow as Sailed"
-        message="Are you sure you want to mark this sailing as sailed? This will lock the check-in list and passenger seating configuration permanently."
+        message="Are you sure you want to mark this sailing as sailed? This will lock the check-in list and passenger seating configuration."
         confirmText="Confirm & Close"
         cancelText="Cancel"
         type="warning"
         isLoading={isClosingChecklist}
         onConfirm={handleConfirmClose}
         onCancel={() => setIsConfirmOpen(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={isReopenConfirmOpen}
+        title="Reopen Sailing Checklist"
+        message="Are you sure you want to reopen this checklist? The sailing will return to Confirmed status and be editable again."
+        confirmText="Yes, Reopen"
+        cancelText="Cancel"
+        type="warning"
+        isLoading={isReopeningChecklist}
+        onConfirm={handleConfirmReopen}
+        onCancel={() => setIsReopenConfirmOpen(false)}
       />
 
       {/* Share Modal Dialog */}

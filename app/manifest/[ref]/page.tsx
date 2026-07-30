@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { getPublicManifest } from "@/services/vessels";
-import { updateBookingGuest } from "@/services/bookings";
-import { Ship, Download, Search, Copy, Check, Clock, UserCheck, AlertTriangle } from "lucide-react";
+import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/bookings";
+import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface ManifestGuest {
@@ -53,37 +53,56 @@ export default function PublicManifestPage() {
 
   const [data, setData] = useState<PublicManifestResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
   // Local state to keep track of checked-in guests at the dock
   const [boardedGuests, setBoardedGuests] = useState<Record<string, boolean>>({});
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    if (!ref) return;
-    getPublicManifest(ref, token)
-      .then((res) => {
-        setData(res);
-        // Pre-populate boarded guests state based on database check-in status
-        const initialBoarded: Record<string, boolean> = {};
-        res.manifest.forEach((b: ManifestBooking) => {
-          b.booking_guests.forEach((g) => {
-            if (g.status === "checked_in" || b.status === "completed") {
-              initialBoarded[g.id] = true;
-            }
-          });
+  const applyManifestData = useCallback((res: PublicManifestResponse, isInitial = false) => {
+    setData(res);
+    // Only reset boardedGuests on initial load to avoid losing local state mid-session
+    if (isInitial) {
+      const initialBoarded: Record<string, boolean> = {};
+      res.manifest.forEach((b: ManifestBooking) => {
+        b.booking_guests.forEach((g) => {
+          if (g.status === "checked_in" || b.status === "completed") {
+            initialBoarded[g.id] = true;
+          }
         });
-        setBoardedGuests(initialBoarded);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to load sailing manifest. Access token may be invalid or expired.");
-      })
-      .finally(() => {
-        setLoading(false);
       });
-  }, [ref, token]);
+      setBoardedGuests(initialBoarded);
+    }
+  }, []);
+
+  const fetchManifest = useCallback(async (isInitial = false, showLoader = false) => {
+    if (!ref) return;
+    if (showLoader) setSyncing(true);
+    try {
+      const res = await getPublicManifest(ref, token);
+      applyManifestData(res, isInitial);
+    } catch (err) {
+      if (isInitial) {
+        setError("Failed to load sailing manifest. The access token may be invalid.");
+      }
+    } finally {
+      if (isInitial) setLoading(false);
+      if (showLoader) setSyncing(false);
+    }
+  }, [ref, token, applyManifestData]);
+
+  // Initial fetch + 10-second auto-polling
+  useEffect(() => {
+    fetchManifest(true);
+    pollingRef.current = setInterval(() => fetchManifest(false), 10000);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [fetchManifest]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -111,7 +130,36 @@ export default function PublicManifestPage() {
         ...prev,
         [guestId]: isBoarded,
       }));
-      toast.error("Failed to update passenger status. Link token might be expired.");
+      toast.error("Failed to update passenger status.");
+    }
+  };
+
+  const handleNoShow = async (booking: ManifestBooking) => {
+    if (booking.status === "no_show") return;
+    setActionLoading((prev) => ({ ...prev, [`noshow-${booking.reference}`]: true }));
+    try {
+      await noShowBooking(booking.reference, token, true);
+      toast.success(`Booking ${booking.reference} marked as No Show`);
+      fetchManifest(false, false);
+    } catch (err) {
+      toast.error("Failed to mark booking as No Show.");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`noshow-${booking.reference}`]: false }));
+    }
+  };
+
+  const handleCancel = async (booking: ManifestBooking) => {
+    if (booking.status === "cancelled") return;
+    if (!confirm(`Cancel booking ${booking.reference} for ${booking.booked_by_name}? This cannot be undone.`)) return;
+    setActionLoading((prev) => ({ ...prev, [`cancel-${booking.reference}`]: true }));
+    try {
+      await cancelBooking(booking.reference, token, true);
+      toast.success(`Booking ${booking.reference} cancelled`);
+      fetchManifest(false, false);
+    } catch (err) {
+      toast.error("Failed to cancel booking.");
+    } finally {
+      setActionLoading((prev) => ({ ...prev, [`cancel-${booking.reference}`]: false }));
     }
   };
 
@@ -173,8 +221,6 @@ export default function PublicManifestPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6">
-
-
       <div className="max-w-5xl mx-auto space-y-6">
 
         {/* Regular Header Panel */}
@@ -194,7 +240,17 @@ export default function PublicManifestPage() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Manual Sync Button */}
+                <button
+                  onClick={() => fetchManifest(false, true)}
+                  disabled={syncing}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-xs rounded-xl transition-all disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
+                  {syncing ? "Syncing..." : "Sync List"}
+                </button>
+
                 <button
                   onClick={handleCopyLink}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-xs rounded-xl transition-all"
@@ -251,8 +307,8 @@ export default function PublicManifestPage() {
                 <span className="text-lg font-black uppercase">{schedule.status}</span>
               </div>
               <div>
-                <span className="block text-amber-300 font-semibold uppercase tracking-wider text-[10px]">Escort Captain</span>
-                <span className="text-lg font-black">Shared Manifest</span>
+                <span className="block text-amber-300 font-semibold uppercase tracking-wider text-[10px]">Auto-Sync</span>
+                <span className="text-lg font-black">Every 10s</span>
               </div>
             </div>
           </div>
@@ -275,24 +331,75 @@ export default function PublicManifestPage() {
 
           {/* Interactive Screen View */}
           <div className="no-print divide-y divide-slate-100">
-            {filteredManifest.map((b) => (
-              <div key={b.id} className="p-6 hover:bg-slate-50/50 transition-colors space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900 text-xs bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
-                        {b.reference}
-                      </span>
-                      {b.table_number && (
-                        <span className="font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded">
-                          Table {b.table_number}
+            {filteredManifest.map((b) => {
+              const isCancelled = b.status === "cancelled";
+              const isNoShow = b.status === "no_show";
+              const isCompleted = b.status === "completed";
+              const noShowLoading = !!actionLoading[`noshow-${b.reference}`];
+              const cancelLoading = !!actionLoading[`cancel-${b.reference}`];
+
+              return (
+                <div
+                  key={b.id}
+                  className={`p-6 transition-colors space-y-4 ${isCancelled ? "opacity-50 bg-rose-50/30" : "hover:bg-slate-50/50"}`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-slate-900 text-xs bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                          {b.reference}
                         </span>
-                      )}
+                        {b.table_number && (
+                          <span className="font-bold text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded">
+                            Table {b.table_number}
+                          </span>
+                        )}
+                        {/* Booking status badge */}
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          isCompleted
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : isNoShow
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : isCancelled
+                            ? "bg-slate-100 text-slate-500 border-slate-200"
+                            : "bg-amber-50 text-amber-800 border-amber-200"
+                        }`}>
+                          {b.status === "no_show" ? "No Show" : b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-slate-800 text-sm mt-1">{b.booked_by_name}</h3>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Party of {b.party_size} ({b.adult_count} Adults, {b.child_count} Kids)
+                      </p>
                     </div>
-                    <h3 className="font-bold text-slate-800 text-sm mt-1">{b.booked_by_name}</h3>
-                    <p className="text-xs text-slate-500 font-medium">
-                      Party of {b.party_size} ({b.adult_count} Adults, {b.child_count} Kids)
-                    </p>
+
+                    {/* No Show & Cancel Actions */}
+                    {!isCancelled && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleNoShow(b)}
+                          disabled={isNoShow || noShowLoading || isCancelled}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border transition-all disabled:cursor-not-allowed ${
+                            isNoShow
+                              ? "bg-rose-100 text-rose-800 border-rose-200"
+                              : "bg-white text-rose-600 border-rose-200 hover:bg-rose-50 disabled:opacity-50"
+                          }`}
+                          title="Mark entire booking as No Show"
+                        >
+                          {noShowLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserX className="w-3.5 h-3.5" />}
+                          No Show
+                        </button>
+                        <button
+                          onClick={() => handleCancel(b)}
+                          disabled={cancelLoading || isCancelled}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Cancel this booking"
+                        >
+                          {cancelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {(b.special_requests || (b.booking_addons && b.booking_addons.length > 0)) && (
@@ -314,42 +421,44 @@ export default function PublicManifestPage() {
                       )}
                     </div>
                   )}
-                </div>
 
-                {/* Granular passenger checklists */}
-                <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
-                    Passenger Boarding Checklist
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {b.booking_guests.map((g) => {
-                      const isBoarded = !!boardedGuests[g.id];
-                      return (
-                        <button
-                          key={g.id}
-                          onClick={() => handleToggleBoarding(g.id)}
-                          className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group ${
-                            isBoarded
-                              ? "bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold"
-                              : "bg-white border-slate-200 text-slate-700 font-semibold"
-                          }`}
-                        >
-                          <div className="truncate pr-2">
-                            <div className="text-xs truncate">{g.first_name} {g.last_name}</div>
-                            {g.is_primary && <div className="text-[8px] text-amber-700 uppercase tracking-wider">Primary</div>}
-                          </div>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                            isBoarded ? "bg-emerald-600 text-white" : "bg-slate-100 text-transparent group-hover:bg-slate-200"
-                          }`}>
-                            <Check className="w-3.5 h-3.5" />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {/* Granular passenger checklists */}
+                  {!isCancelled && (
+                    <div className="bg-slate-50/60 border border-slate-100 rounded-2xl p-4">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">
+                        Passenger Boarding Checklist
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {b.booking_guests.map((g) => {
+                          const isBoarded = !!boardedGuests[g.id];
+                          return (
+                            <button
+                              key={g.id}
+                              onClick={() => handleToggleBoarding(g.id)}
+                              className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group ${
+                                isBoarded
+                                  ? "bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold"
+                                  : "bg-white border-slate-200 text-slate-700 font-semibold"
+                              }`}
+                            >
+                              <div className="truncate pr-2">
+                                <div className="text-xs truncate">{g.first_name} {g.last_name}</div>
+                                {g.is_primary && <div className="text-[8px] text-amber-700 uppercase tracking-wider">Primary</div>}
+                              </div>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                isBoarded ? "bg-emerald-600 text-white" : "bg-slate-100 text-transparent group-hover:bg-slate-200"
+                              }`}>
+                                <Check className="w-3.5 h-3.5" />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {filteredManifest.length === 0 && (
               <div className="py-20 text-center space-y-2">

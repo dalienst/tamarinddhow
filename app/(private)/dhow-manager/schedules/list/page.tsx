@@ -260,16 +260,18 @@ export default function ScheduleListPage() {
                             Seating Layout
                           </Link>
 
-                          <button
-                            onClick={() => {
-                              setSelectedScheduleForWalkIn(s.id);
-                              setIsWalkInOpen(true);
-                              setOpenMenuRef(null);
-                            }}
-                            className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
-                          >
-                            Book Walk-In
-                          </button>
+                          {s.status !== "completed" && s.status !== "cancelled" && (
+                            <button
+                              onClick={() => {
+                                setSelectedScheduleForWalkIn(s.id);
+                                setIsWalkInOpen(true);
+                                setOpenMenuRef(null);
+                              }}
+                              className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 transition-colors"
+                            >
+                              Book Walk-In
+                            </button>
+                          )}
 
                           <button
                             onClick={() => {
@@ -283,30 +285,33 @@ export default function ScheduleListPage() {
                             Share Public Link
                           </button>
 
-                          <div className="border-t border-slate-100 my-1.5" />
-
-                          {s.is_open ? (
-                            <button
-                              disabled={actionLoading[`${s.reference}-close`]}
-                              onClick={() => {
-                                handleAction(s.reference, "close");
-                                setOpenMenuRef(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
-                            >
-                              Close Bookings
-                            </button>
-                          ) : (
-                            <button
-                              disabled={actionLoading[`${s.reference}-open`]}
-                              onClick={() => {
-                                handleAction(s.reference, "open");
-                                setOpenMenuRef(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
-                            >
-                              Open Bookings
-                            </button>
+                          {s.status !== "completed" && s.status !== "cancelled" && (
+                            <>
+                              <div className="border-t border-slate-100 my-1.5" />
+                              {s.is_open ? (
+                                <button
+                                  disabled={actionLoading[`${s.reference}-close`]}
+                                  onClick={() => {
+                                    handleAction(s.reference, "close");
+                                    setOpenMenuRef(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                                >
+                                  Close Bookings
+                                </button>
+                              ) : (
+                                <button
+                                  disabled={actionLoading[`${s.reference}-open`]}
+                                  onClick={() => {
+                                    handleAction(s.reference, "open");
+                                    setOpenMenuRef(null);
+                                  }}
+                                  className="w-full text-left px-4 py-2 text-xs font-semibold text-emerald-850 hover:bg-emerald-50 flex items-center gap-2 disabled:opacity-50 transition-colors"
+                                >
+                                  Open Bookings
+                                </button>
+                              )}
+                            </>
                           )}
 
                           {s.status !== "confirmed" && s.status !== "cancelled" && s.status !== "completed" && (

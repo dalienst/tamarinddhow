@@ -42,7 +42,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   const [guestPhone, setGuestPhone] = useState("");
   const [adultCount, setAdultCount] = useState("2");
   const [childCount, setChildCount] = useState("0");
-  const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund" | "confirmed">("refund");
+  const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund" | "confirmed">("confirmed");
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived" | "staff_card" | "mastercard" | "visa">("cash");

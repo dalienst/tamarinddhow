@@ -25,7 +25,7 @@ export default function CreateScheduleTemplateForm({
   const [tempDays, setTempDays] = useState<string[]>([]);
   const [tempPrice, setTempPrice] = useState("5000");
   const [tempPriceChild, setTempPriceChild] = useState("2500");
-  const [tempFlatFee, setTempFlatFee] = useState("150000");
+  const [tempFlatFee, setTempFlatFee] = useState("272000");
   const [tempNotes, setTempNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -67,8 +67,8 @@ export default function CreateScheduleTemplateForm({
     <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
         <span className="font-bold text-xs text-slate-700 uppercase tracking-widest">New Blueprint Details</span>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onClose}
           disabled={isSaving}
           className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
@@ -76,7 +76,7 @@ export default function CreateScheduleTemplateForm({
           <X className="w-4 h-4" />
         </button>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
         <div className="space-y-1">
           <label className="block text-[10px] font-bold text-slate-600 uppercase">Meal Type</label>
@@ -173,11 +173,10 @@ export default function CreateScheduleTemplateForm({
                 key={day}
                 disabled={isSaving}
                 onClick={() => toggleDaySelection(day)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all disabled:opacity-60 ${
-                  isSelected
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all disabled:opacity-60 ${isSelected
                     ? "bg-amber-600 border-amber-600 text-white shadow-sm"
                     : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-                }`}
+                  }`}
               >
                 {day}
               </button>

@@ -9,12 +9,12 @@ import { useSession } from "next-auth/react";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Skeleton, SkeletonCard } from "@/components/common/Skeleton";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
-import { 
-  Calendar as CalendarIcon, 
-  Ship, 
-  Plus, 
-  List as ListIcon, 
-  X, 
+import {
+  Calendar as CalendarIcon,
+  Ship,
+  Plus,
+  List as ListIcon,
+  X,
   Clock,
   Loader2,
   ChevronDown,
@@ -47,9 +47,9 @@ export default function ScheduleListPage() {
   const [mealType, setMealType] = useState<MealType>("sunset_cruise");
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("22:30");
-  const [pricePerPerson, setPricePerPerson] = useState("5500");
-  const [pricePerChild, setPricePerChild] = useState("2750");
-  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
+  const [pricePerPerson, setPricePerPerson] = useState("6800");
+  const [pricePerChild, setPricePerChild] = useState("3400");
+  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("272000");
   const [notes, setNotes] = useState("");
   const [cancelModalState, setCancelModalState] = useState<{
     isOpen: boolean;
@@ -155,14 +155,13 @@ export default function ScheduleListPage() {
         </div>
         <div className="relative h-2 bg-slate-100 rounded-full overflow-visible border border-slate-200/50">
           {/* Progress fill */}
-          <div 
-            className={`h-full rounded-full transition-all duration-300 ${
-              isQuotaMet ? "bg-emerald-500 shadow-sm" : "bg-amber-500"
-            }`}
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${isQuotaMet ? "bg-emerald-500 shadow-sm" : "bg-amber-500"
+              }`}
             style={{ width: `${paxPercentage}%` }}
           />
           {/* Min Quota Marker */}
-          <div 
+          <div
             className="absolute top-0 h-full w-[2px] bg-slate-400 border-l border-white"
             style={{ left: `${quotaPercentage}%` }}
             title={`Minimum Quota Threshold: ${minQuota}`}
@@ -211,9 +210,8 @@ export default function ScheduleListPage() {
                     <div className="flex items-center gap-3 flex-wrap">
                       <span className="font-extrabold text-slate-900 text-lg tracking-tight">{s.dhow_name}</span>
                       <StatusBadge status={s.status} type="schedule" />
-                      <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-lg ${
-                        (s.is_open && s.status !== "completed" && s.status !== "cancelled") ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
-                      }`}>
+                      <span className={`px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-lg ${(s.is_open && s.status !== "completed" && s.status !== "cancelled") ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                        }`}>
                         {(s.is_open && s.status !== "completed" && s.status !== "cancelled") ? "Bookings Open" : "Bookings Closed"}
                       </span>
                     </div>
@@ -222,7 +220,7 @@ export default function ScheduleListPage() {
                       <span className="text-slate-300">|</span>
                       <span>{s.meal_type_display}</span>
                       <span className="text-slate-300">|</span>
-                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" /> {s.departure_time.substring(0,5)} - {s.return_time.substring(0,5)}</span>
+                      <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-slate-400" /> {s.departure_time.substring(0, 5)} - {s.return_time.substring(0, 5)}</span>
                     </div>
                   </div>
                 </div>
@@ -239,9 +237,9 @@ export default function ScheduleListPage() {
 
                     {openMenuRef === s.reference && (
                       <>
-                        <div 
-                          className="fixed inset-0 z-10" 
-                          onClick={() => setOpenMenuRef(null)} 
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setOpenMenuRef(null)}
                         />
                         <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fadeIn">
                           <Link
@@ -363,7 +361,7 @@ export default function ScheduleListPage() {
               <h3 className="font-extrabold tracking-tight flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-amber-500" /> Plan Sailing Voyage
               </h3>
-              <button 
+              <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-300 hover:text-white transition-colors"
               >

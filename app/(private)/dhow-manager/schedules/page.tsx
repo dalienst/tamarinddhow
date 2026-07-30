@@ -9,20 +9,20 @@ import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/common/Skeleton";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
-import { 
-  Calendar as CalendarIcon, 
-  Ship, 
-  CheckCircle, 
-  XCircle, 
-  Users, 
-  Table, 
-  QrCode, 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
-  List, 
-  Grid, 
-  X, 
+import {
+  Calendar as CalendarIcon,
+  Ship,
+  CheckCircle,
+  XCircle,
+  Users,
+  Table,
+  QrCode,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Grid,
+  X,
   Info,
   Clock,
   AlertTriangle,
@@ -54,9 +54,9 @@ export default function ScheduleCenterPage() {
   const [mealType, setMealType] = useState<MealType>("sunset_cruise");
   const [departureTime, setDepartureTime] = useState("18:30");
   const [returnTime, setReturnTime] = useState("22:30");
-  const [pricePerPerson, setPricePerPerson] = useState("5500");
-  const [pricePerChild, setPricePerChild] = useState("2750");
-  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("150000");
+  const [pricePerPerson, setPricePerPerson] = useState("6800");
+  const [pricePerChild, setPricePerChild] = useState("3400");
+  const [exclusiveFlatFee, setExclusiveFlatFee] = useState("272000");
   const [notes, setNotes] = useState("");
   const [cancelModalState, setCancelModalState] = useState<{
     isOpen: boolean;
@@ -203,14 +203,13 @@ export default function ScheduleCenterPage() {
         </div>
         <div className="relative h-2 bg-slate-100 rounded-full overflow-visible border border-slate-200/50">
           {/* Progress fill */}
-          <div 
-            className={`h-full rounded-full transition-all duration-300 ${
-              isQuotaMet ? "bg-emerald-500 shadow-sm" : "bg-amber-500"
-            }`}
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${isQuotaMet ? "bg-emerald-500 shadow-sm" : "bg-amber-500"
+              }`}
             style={{ width: `${paxPercentage}%` }}
           />
           {/* Min Quota Marker */}
-          <div 
+          <div
             className="absolute top-0 h-full w-[2px] bg-slate-400 border-l border-white"
             style={{ left: `${quotaPercentage}%` }}
             title={`Minimum Quota Threshold: ${minQuota}`}
@@ -224,8 +223,8 @@ export default function ScheduleCenterPage() {
     return schedules.filter(s => {
       const sDate = new Date(s.date);
       return sDate.getDate() === day.getDate() &&
-             sDate.getMonth() === day.getMonth() &&
-             sDate.getFullYear() === day.getFullYear();
+        sDate.getMonth() === day.getMonth() &&
+        sDate.getFullYear() === day.getFullYear();
     });
   };
 
@@ -261,13 +260,13 @@ export default function ScheduleCenterPage() {
               {monthNames[month]} {year}
             </h2>
             <div className="flex gap-2">
-              <button 
+              <button
                 onClick={handlePrevMonth}
                 className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4 text-slate-600" />
               </button>
-              <button 
+              <button
                 onClick={handleNextMonth}
                 className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
               >
@@ -290,7 +289,7 @@ export default function ScheduleCenterPage() {
           <div className="grid grid-cols-7 auto-rows-[120px] bg-slate-100 gap-[1px]">
             {daysArray.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="bg-white" />;
-              
+
               const daySchedules = getSchedulesForDay(day);
               const isSelected = selectedDate && selectedDate.toDateString() === day.toDateString();
               const isToday = new Date().toDateString() === day.toDateString();
@@ -299,14 +298,12 @@ export default function ScheduleCenterPage() {
                 <div
                   key={`day-${day.getDate()}`}
                   onClick={() => handleDayClick(day)}
-                  className={`bg-white p-3 cursor-pointer transition-all flex flex-col justify-between overflow-hidden relative border ${
-                    isSelected ? "border-amber-500 ring-1 ring-amber-500/20" : "border-transparent hover:bg-slate-50/50"
-                  }`}
+                  className={`bg-white p-3 cursor-pointer transition-all flex flex-col justify-between overflow-hidden relative border ${isSelected ? "border-amber-500 ring-1 ring-amber-500/20" : "border-transparent hover:bg-slate-50/50"
+                    }`}
                 >
                   <div className="flex justify-between items-center">
-                    <span className={`text-sm font-bold ${
-                      isToday ? "bg-amber-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-sm" : "text-slate-800"
-                    }`}>
+                    <span className={`text-sm font-bold ${isToday ? "bg-amber-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-sm" : "text-slate-800"
+                      }`}>
                       {day.getDate()}
                     </span>
                     {daySchedules.length > 0 && (
@@ -330,7 +327,7 @@ export default function ScheduleCenterPage() {
                           className={`text-[9px] font-bold px-2 py-0.5 rounded border truncate ${colorClass}`}
                           title={`${s.dhow_name} (${s.meal_type_display})`}
                         >
-                          {s.departure_time.substring(0,5)} {s.dhow_name}
+                          {s.departure_time.substring(0, 5)} {s.dhow_name}
                         </div>
                       );
                     })}
@@ -357,7 +354,7 @@ export default function ScheduleCenterPage() {
                 <h3 className="font-extrabold text-lg tracking-tight">Sailing Manifest</h3>
                 <p className="text-xs text-slate-400 mt-0.5">{selectedDate.toDateString()}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedDate(null)}
                 className="text-slate-300 hover:text-white transition-colors"
               >
@@ -394,12 +391,11 @@ export default function ScheduleCenterPage() {
                             <StatusBadge status={s.status} type="schedule" />
                           </div>
                           <p className="text-xs text-slate-500 font-semibold mt-1 flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" /> {s.departure_time.substring(0,5)} - {s.return_time.substring(0,5)} ({s.meal_type_display})
+                            <Clock className="w-3.5 h-3.5 text-slate-400" /> {s.departure_time.substring(0, 5)} - {s.return_time.substring(0, 5)} ({s.meal_type_display})
                           </p>
                         </div>
-                        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${
-                          s.is_open ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
-                        }`}>
+                        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${s.is_open ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-600"
+                          }`}>
                           {s.is_open ? "Open" : "Closed"}
                         </span>
                       </div>
@@ -420,7 +416,7 @@ export default function ScheduleCenterPage() {
                           <Table className="w-3.5 h-3.5" /> Seating
                         </Link>
 
-                         {s.is_open ? (
+                        {s.is_open ? (
                           <button
                             disabled={actionLoading[`${s.reference}-close`]}
                             onClick={() => handleAction(s.reference, "close")}
@@ -491,7 +487,7 @@ export default function ScheduleCenterPage() {
               <h3 className="font-extrabold tracking-tight flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-amber-500" /> Plan Sailing Voyage
               </h3>
-              <button 
+              <button
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-300 hover:text-white transition-colors"
               >

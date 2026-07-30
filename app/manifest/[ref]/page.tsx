@@ -4,8 +4,9 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation";
 import { getPublicManifest } from "@/services/vessels";
 import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/bookings";
-import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil } from "lucide-react";
+import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil, Plus } from "lucide-react";
 import toast from "react-hot-toast";
+import { SupervisorBookingModal } from "@/components/dhow-manager/SupervisorBookingModal";
 
 interface ManifestGuest {
   id: string;
@@ -32,12 +33,15 @@ interface ManifestBooking {
 }
 
 interface ScheduleData {
+  id: string;
   reference: string;
   dhow_name: string;
   date: string;
   meal_type_display: string;
   departure_time: string;
   return_time: string;
+  price_per_person: number;
+  price_per_child: number;
   status: string;
 }
 

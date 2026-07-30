@@ -8,7 +8,7 @@ export type BookingStatus =
   | "completed"
   | "no_show";
 
-export type CancellationPreference = "reschedule" | "refund";
+export type CancellationPreference = "reschedule" | "refund" | "confirmed";
 
 export type CheckInStatus = "pending" | "checked_in" | "no_show";
 

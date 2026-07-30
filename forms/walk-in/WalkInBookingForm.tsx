@@ -41,7 +41,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   const [guestPhone, setGuestPhone] = useState("");
   const [adultCount, setAdultCount] = useState("2");
   const [childCount, setChildCount] = useState("0");
-  const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund">("refund");
+  const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund" | "confirmed">("refund");
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived" | "staff_card" | "mastercard" | "visa">("cash");
@@ -440,6 +440,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
             >
               <option value="refund">Refund Money</option>
               <option value="reschedule">Reschedule Date</option>
+              <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
             </select>
           </div>
 

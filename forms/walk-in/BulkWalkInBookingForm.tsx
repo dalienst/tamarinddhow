@@ -36,7 +36,7 @@ interface BulkBookingRow {
   childCount: string;
   customAdultPrice: string;
   customChildPrice: string;
-  cancellationPreference: "reschedule" | "refund";
+  cancellationPreference: "reschedule" | "refund" | "confirmed";
   tableRequest: string;
   specialRequests: string;
   discountType: "amount" | "percentage";
@@ -565,6 +565,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                           >
                             <option value="refund">Refund Money</option>
                             <option value="reschedule">Reschedule Date</option>
+                            <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
                           </select>
                         </div>
                         <div>

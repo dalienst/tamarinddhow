@@ -301,14 +301,14 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           <table className="w-full text-left text-xs border-collapse">
             <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 min-w-[160px]">Voyage Selection</th>
-                <th className="px-4 py-3 min-w-[150px]">Primary Guest</th>
-                <th className="px-4 py-3 min-w-[120px]">Phone Number</th>
-                <th className="px-4 py-3 min-w-[100px]">Guests</th>
-                <th className="px-4 py-3 min-w-[120px]">Custom Pricing</th>
-                <th className="px-4 py-3 min-w-[140px]">Discount & Reason</th>
-                <th className="px-4 py-3 min-w-[120px]">Payment</th>
-                <th className="px-4 py-3 text-center w-24">Add-Ons</th>
+                <th className="px-4 py-3 min-w-[280px]">Voyage Selection</th>
+                <th className="px-4 py-3 min-w-[220px]">Primary Guest</th>
+                <th className="px-4 py-3 min-w-[160px]">Phone Number</th>
+                <th className="px-4 py-3 min-w-[120px]">Guests</th>
+                <th className="px-4 py-3 min-w-[130px]">Custom Pricing</th>
+                <th className="px-4 py-3 min-w-[220px]">Discount & Reason</th>
+                <th className="px-4 py-3 min-w-[200px]">Payment</th>
+                <th className="px-4 py-3 text-center min-w-[120px]">Add-Ons</th>
                 <th className="px-4 py-3 text-center w-12">Del</th>
               </tr>
             </thead>

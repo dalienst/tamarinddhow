@@ -95,14 +95,13 @@ export default function EditBookingPage() {
         </div>
       </div>
 
-      {/* Form Card wrapper */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
-        <WalkInBookingForm
-          token={token}
-          bookingToEdit={booking}
-          onSuccess={handleSuccess}
-        />
-      </div>
+      {/* Form wrapper */}
+      <WalkInBookingForm
+        token={token}
+        bookingToEdit={booking}
+        onSuccess={handleSuccess}
+      />
+
     </div>
   );
 }

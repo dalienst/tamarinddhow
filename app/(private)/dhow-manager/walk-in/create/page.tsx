@@ -68,14 +68,13 @@ function RegisterWalkInFormContainer() {
         </div>
       </div>
 
-      {/* Form Card wrapper */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
-        {formMode === "single" ? (
-          <WalkInBookingForm token={token} onSuccess={handleSuccess} initialScheduleId={scheduleId} />
-        ) : (
-          <BulkWalkInBookingForm token={token} onSuccess={handleSuccess} />
-        )}
-      </div>
+      {/* Form wrapper */}
+      {formMode === "single" ? (
+        <WalkInBookingForm token={token} onSuccess={handleSuccess} initialScheduleId={scheduleId} />
+      ) : (
+        <BulkWalkInBookingForm token={token} onSuccess={handleSuccess} />
+      )}
+
     </div>
   );
 }

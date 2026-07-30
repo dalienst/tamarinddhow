@@ -40,6 +40,16 @@ export const getBookingDetail = async (
   return response.data;
 };
 
+export const getPublicTicketDetail = async (
+  reference: string
+): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.get(
+    `/api/v1/bookings/${reference}/ticket/`
+  );
+  return response.data;
+};
+
+
 export const createBooking = async (
   data: Partial<Booking>,
   token: string

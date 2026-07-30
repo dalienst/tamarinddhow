@@ -113,3 +113,16 @@ export const processRefund = async (
   );
   return response.data;
 };
+
+export const createRefund = async (
+  data: { payment: string; booking: string; amount: number; reason: string; notes?: string },
+  token: string
+): Promise<Refund> => {
+  const response: AxiosResponse<Refund> = await apiActions.post(
+    "/api/v1/refunds/",
+    data,
+    { headers: { Authorization: `Token ${token}` } }
+  );
+  return response.data;
+};
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { getBookingDetail, updateBooking } from "@/services/bookings";
 import { useSession } from "next-auth/react";
 import { QrCode, Search, CheckCircle, AlertTriangle, Users, HelpCircle, ArrowRight, Table, Clock } from "lucide-react";
@@ -26,10 +26,46 @@ export default function TicketScannerPage() {
   const [activeTab, setActiveTab] = useState<"camera" | "manual">("manual");
   const [scanLog, setScanLog] = useState<ScanLogItem[]>([]);
 
-  // Current scanned ticket details
   const [scannedBooking, setScannedBooking] = useState<any | null>(null);
   const [scanStatus, setScanStatus] = useState<"idle" | "loading" | "success" | "warning" | "error">("idle");
   const [scanMessage, setScanMessage] = useState("");
+
+  useEffect(() => {
+    if (activeTab !== "camera") return;
+
+    // Dynamically require to avoid SSR issues
+    const { Html5QrcodeScanner } = require("html5-qrcode");
+
+    const scanner = new Html5QrcodeScanner(
+      "reader",
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+      },
+      /* verbose= */ false
+    );
+
+    const onScanSuccess = (decodedText: string) => {
+      try {
+        const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-84.wav");
+        audio.play().catch(() => {});
+      } catch (e) {}
+
+      handleScanCode(decodedText);
+      setActiveTab("manual");
+    };
+
+    const onScanFailure = () => {
+      // quiet fail
+    };
+
+    scanner.render(onScanSuccess, onScanFailure);
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, [activeTab]);
 
   const handleScanCode = async (code: string) => {
     const cleanCode = code.trim().toUpperCase();
@@ -168,26 +204,15 @@ export default function TicketScannerPage() {
               </div>
             )}
 
-            {/* Camera mock scanner */}
+            {/* Live Camera Scanner */}
             {activeTab === "camera" && (
               <div className="space-y-6">
-                <div className="bg-slate-950 text-slate-400 rounded-2xl aspect-video relative overflow-hidden flex flex-col items-center justify-center border border-slate-800">
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-600/10 via-transparent to-transparent animate-pulse" />
-                  
-                  {/* Camera overlay grids */}
-                  <div className="w-48 h-48 border-2 border-dashed border-amber-600/60 rounded-3xl relative flex items-center justify-center flex-col p-4 shadow-2xl">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-600 rounded-tl-xl -mt-1 -ml-1" />
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-600 rounded-tr-xl -mt-1 -mr-1" />
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-600 rounded-bl-xl -mb-1 -ml-1" />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-600 rounded-br-xl -mb-1 -mr-1" />
-                    <QrCode className="w-16 h-16 text-slate-700 animate-pulse" />
-                  </div>
-                  
-                  <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500 mt-4 block">Camera Active (Simulation)</span>
+                <div className="bg-slate-950 text-slate-400 rounded-2xl relative overflow-hidden flex flex-col items-center justify-center border border-slate-800 p-2 sm:p-4">
+                  <div id="reader" className="w-full max-w-md mx-auto overflow-hidden rounded-xl"></div>
                 </div>
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
-                  <span className="text-xs font-bold text-slate-700 block">Scan Simulations for Testing:</span>
+                  <span className="text-xs font-bold text-slate-700 block">Scan Simulations for Offline Testing:</span>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => triggerMockScan("BK-7890")}
@@ -205,6 +230,7 @@ export default function TicketScannerPage() {
                 </div>
               </div>
             )}
+
 
             {/* SCANNING OUTCOME / DETAILS CARD */}
             {scanStatus !== "idle" && (

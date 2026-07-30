@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { UserPlus, ArrowLeft } from "lucide-react";
 import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
 import BulkWalkInBookingForm from "@/forms/walk-in/BulkWalkInBookingForm";
 
-export default function RegisterWalkInPage() {
+function RegisterWalkInFormContainer() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const scheduleId = searchParams.get("scheduleId") || undefined;
   const { data: session } = useSession();
   const token = session?.user?.token || "";
 
@@ -69,11 +71,23 @@ export default function RegisterWalkInPage() {
       {/* Form Card wrapper */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-8">
         {formMode === "single" ? (
-          <WalkInBookingForm token={token} onSuccess={handleSuccess} />
+          <WalkInBookingForm token={token} onSuccess={handleSuccess} initialScheduleId={scheduleId} />
         ) : (
           <BulkWalkInBookingForm token={token} onSuccess={handleSuccess} />
         )}
       </div>
     </div>
+  );
+}
+
+export default function RegisterWalkInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-[50vh] flex items-center justify-center p-6 text-slate-500 font-semibold text-sm">
+        Loading...
+      </div>
+    }>
+      <RegisterWalkInFormContainer />
+    </Suspense>
   );
 }

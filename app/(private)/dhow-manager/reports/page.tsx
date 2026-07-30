@@ -13,6 +13,8 @@ export default function ManagerReportsPage() {
   const [endDate, setEndDate] = useState("");
   const [selectedDhow, setSelectedDhow] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("");
+  const [selectedPaymentMethodFilter, setSelectedPaymentMethodFilter] = useState("");
+
 
   // Query Hooks
   const { data: dhowsData } = useFetchDhows();
@@ -53,6 +55,17 @@ export default function ManagerReportsPage() {
       (p) => bookingIds.has(p.booking) && p.status === "completed"
     );
   }, [paymentsData, filteredBookings]);
+
+  const displayedBookings = useMemo(() => {
+    if (!selectedPaymentMethodFilter) return filteredBookings;
+    const matchingBookingIds = new Set(
+      filteredPayments
+        .filter((p) => p.payment_method === selectedPaymentMethodFilter)
+        .map((p) => p.booking)
+    );
+    return filteredBookings.filter((b) => matchingBookingIds.has(b.id));
+  }, [filteredBookings, filteredPayments, selectedPaymentMethodFilter]);
+
 
 
   const filteredSchedules = useMemo(() => {
@@ -230,7 +243,9 @@ export default function ManagerReportsPage() {
     setEndDate("");
     setSelectedDhow("");
     setSelectedStatus("");
+    setSelectedPaymentMethodFilter("");
   };
+
 
   return (
     <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
@@ -373,35 +388,50 @@ export default function ManagerReportsPage() {
           </span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4 text-xs pt-1">
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">M-Pesa</span>
-            <span className="text-base font-black text-slate-800">KES {stats.mpesaTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Cash</span>
-            <span className="text-base font-black text-slate-800">KES {stats.cashTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Visa</span>
-            <span className="text-base font-black text-slate-800">KES {stats.visaTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Mastercard</span>
-            <span className="text-base font-black text-slate-800">KES {stats.mastercardTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-amber-50/50 border border-amber-200/65 rounded-2xl">
-            <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider">Staff Card</span>
-            <span className="text-base font-black text-amber-900">KES {stats.staffCardTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Agent Credit</span>
-            <span className="text-base font-black text-slate-800">KES {stats.agentCreditTotal.toLocaleString()}</span>
-          </div>
-          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
-            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Waived</span>
-            <span className="text-base font-black text-slate-800">KES {stats.waivedTotal.toLocaleString()}</span>
-          </div>
+          {[
+            { id: "mpesa", label: "M-Pesa", total: stats.mpesaTotal, color: "emerald" },
+            { id: "cash", label: "Cash", total: stats.cashTotal, color: "emerald" },
+            { id: "visa", label: "Visa", total: stats.visaTotal, color: "indigo" },
+            { id: "mastercard", label: "Mastercard", total: stats.mastercardTotal, color: "indigo" },
+            { id: "staff_card", label: "Staff Card", total: stats.staffCardTotal, color: "amber" },
+            { id: "agent_credit", label: "Agent Credit", total: stats.agentCreditTotal, color: "slate" },
+            { id: "waived", label: "Waived", total: stats.waivedTotal, color: "slate" },
+          ].map((p) => {
+            const isSelected = selectedPaymentMethodFilter === p.id;
+            
+            // Custom card themes depending on choice
+            let cardStyle = "bg-slate-50 border-slate-200 text-slate-800";
+            let labelStyle = "text-slate-400";
+            if (p.color === "amber") {
+              cardStyle = "bg-amber-50/50 border-amber-200/60 text-slate-800";
+              labelStyle = "text-amber-700";
+            }
+            
+            // Apply selected highlight classes
+            if (isSelected) {
+              cardStyle = "bg-amber-600 text-white border-amber-700 ring-2 ring-amber-500/30 shadow-sm font-semibold";
+              labelStyle = "text-amber-100";
+            }
+
+            return (
+              <button
+                type="button"
+                key={p.id}
+                onClick={() => setSelectedPaymentMethodFilter((prev) => prev === p.id ? "" : p.id)}
+                className={`space-y-1 p-3 border rounded-2xl text-left transition-all hover:scale-[1.02] hover:shadow-sm active:scale-95 flex flex-col justify-between ${cardStyle}`}
+                title={`Click to filter list by ${p.label}`}
+              >
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${labelStyle}`}>
+                  {p.label}
+                </span>
+                <span className="text-base font-black">
+                  KES {p.total.toLocaleString()}
+                </span>
+              </button>
+            );
+          })}
         </div>
+
       </div>
 
       {/* OPERATIONAL RATIOS GRID */}
@@ -443,9 +473,33 @@ export default function ManagerReportsPage() {
 
       {/* DETAILED BOOKING LOG */}
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-extrabold text-slate-800 text-base">Detailed Passenger Booking Records ({filteredBookings.length})</h2>
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Historical Logs</span>
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="space-y-1">
+            <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
+              Detailed Passenger Booking Records ({displayedBookings.length})
+              {selectedPaymentMethodFilter && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                  Filtered by: {selectedPaymentMethodFilter.replace("_", " ")}
+                </span>
+              )}
+            </h2>
+            {selectedPaymentMethodFilter && (
+              <p className="text-[11px] text-slate-400 font-semibold">
+                Showing only reservations with completed payments matching the clicked method.
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {selectedPaymentMethodFilter && (
+              <button
+                onClick={() => setSelectedPaymentMethodFilter("")}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-colors mr-2"
+              >
+                Show All Methods
+              </button>
+            )}
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Historical Logs</span>
+          </div>
         </div>
 
         {loadingBookings ? (
@@ -453,7 +507,7 @@ export default function ManagerReportsPage() {
             <span className="w-5 h-5 border-2 border-slate-300 border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
             Loading operational tables...
           </div>
-        ) : filteredBookings.length === 0 ? (
+        ) : displayedBookings.length === 0 ? (
           <div className="p-12 text-center text-slate-400 text-sm font-medium">
             No bookings match the selected filter criteria.
           </div>
@@ -474,7 +528,7 @@ export default function ManagerReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredBookings.map((b) => {
+                {displayedBookings.map((b) => {
                   const sched = schedules.find((s) => s.id === b.schedule);
                   return (
                     <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">

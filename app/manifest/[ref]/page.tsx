@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { getPublicManifest } from "@/services/vessels";
 import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/bookings";
 import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil, Plus } from "lucide-react";
@@ -54,6 +55,8 @@ export default function PublicManifestPage() {
   const { ref } = useParams() as { ref: string };
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
+  const { data: session } = useSession();
+  const isAuthenticated = !!session?.user;
 
   const [data, setData] = useState<PublicManifestResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +99,7 @@ export default function PublicManifestPage() {
     if (!ref) return;
     if (showLoader) setSyncing(true);
     try {
-      const res = await getPublicManifest(ref, token);
+      const res = await getPublicManifest(ref, token, session?.user?.token);
       applyManifestData(res, isInitial);
     } catch (err) {
       if (isInitial) {
@@ -254,13 +257,15 @@ export default function PublicManifestPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => setIsWalkInModalOpen(true)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-emerald-600/10 border border-emerald-500/25"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Register Walk-In
-                </button>
+                {isAuthenticated && (
+                  <button
+                    onClick={() => setIsWalkInModalOpen(true)}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-emerald-600/10 border border-emerald-500/25"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Register Walk-In
+                  </button>
+                )}
 
                 {/* Manual Sync Button */}
                 <button
@@ -395,7 +400,7 @@ export default function PublicManifestPage() {
                     </div>
 
                     {/* No Show & Cancel Actions */}
-                    {!isCancelled && (
+                    {isAuthenticated && !isCancelled && (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleNoShow(b)}
@@ -458,13 +463,13 @@ export default function PublicManifestPage() {
                             <div
                               key={g.id}
                               onClick={() => {
-                                if (!isEditing) handleToggleBoarding(g.id);
+                                if (isAuthenticated && !isEditing) handleToggleBoarding(g.id);
                               }}
                               className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group relative ${
                                 isEditing ? "bg-white border-amber-300 ring-2 ring-amber-500/10 cursor-default" :
                                 isBoarded
-                                  ? "bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold cursor-pointer"
-                                  : "bg-white border-slate-200 text-slate-700 font-semibold cursor-pointer"
+                                  ? `bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold ${isAuthenticated ? "cursor-pointer" : "cursor-default"}`
+                                  : `bg-white border-slate-200 text-slate-700 font-semibold ${isAuthenticated ? "cursor-pointer" : "cursor-default"}`
                               }`}
                             >
                               <div className="flex-1 min-w-0 pr-2">
@@ -518,18 +523,20 @@ export default function PublicManifestPage() {
                                   <>
                                     <div className="text-xs truncate flex items-center gap-1.5">
                                       <span>{g.first_name} {g.last_name}</span>
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setEditingGuestId(g.id);
-                                          setEditFirstName(g.first_name);
-                                          setEditLastName(g.last_name);
-                                        }}
-                                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-slate-600 transition-opacity focus:opacity-100"
-                                        title="Rename passenger"
-                                      >
-                                        <Pencil className="w-3 h-3" />
-                                      </button>
+                                      {isAuthenticated && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingGuestId(g.id);
+                                            setEditFirstName(g.first_name);
+                                            setEditLastName(g.last_name);
+                                          }}
+                                          className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-slate-600 transition-opacity focus:opacity-100"
+                                          title="Rename passenger"
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </button>
+                                      )}
                                     </div>
                                     {g.is_primary && <div className="text-[8px] text-amber-700 uppercase tracking-wider">Primary</div>}
                                   </>
@@ -538,7 +545,11 @@ export default function PublicManifestPage() {
                               
                               {!isEditing && (
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                  isBoarded ? "bg-emerald-600 text-white" : "bg-slate-100 text-transparent group-hover:bg-slate-200"
+                                  isBoarded 
+                                    ? "bg-emerald-600 text-white" 
+                                    : isAuthenticated 
+                                      ? "bg-slate-100 text-transparent group-hover:bg-slate-200" 
+                                      : "bg-slate-100 text-transparent"
                                 }`}>
                                   <Check className="w-3.5 h-3.5" />
                                 </div>

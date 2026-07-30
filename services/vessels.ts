@@ -252,8 +252,10 @@ export const assignTable = async (
   return response.data;
 };
 
-export const getPublicManifest = async (reference: string, token?: string): Promise<any> => {
-  const headers = token ? { "X-Manifest-Token": token } : undefined;
+export const getPublicManifest = async (reference: string, token?: string, sessionToken?: string): Promise<any> => {
+  const headers: Record<string, string> = {};
+  if (token) headers["X-Manifest-Token"] = token;
+  if (sessionToken) headers["Authorization"] = `Token ${sessionToken}`;
   const response: AxiosResponse<any> = await apiActions.get(
     `/api/v1/schedules/${reference}/public-manifest/`,
     { headers }

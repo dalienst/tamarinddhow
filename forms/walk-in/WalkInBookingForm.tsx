@@ -104,7 +104,12 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
       
       if (bookingToEdit.booking_guests) {
         const others = bookingToEdit.booking_guests.filter(g => !g.is_primary);
-        setOtherGuestNames(others.map(o => `${o.first_name} ${o.last_name}`.trim()));
+        setOtherGuestNames(others.map(o => {
+          if (o.first_name === "Guest" && /^\d+$/.test(o.last_name)) {
+            return "";
+          }
+          return `${o.first_name} ${o.last_name}`.trim();
+        }));
       }
 
       if (bookingToEdit.booking_addons) {

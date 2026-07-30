@@ -25,6 +25,7 @@ import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions"
 import { User } from "@/services/accounts"
 import CreateAgent from "@/forms/accounts/CreateAgent"
 import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
+import CreateSupervisor from "@/forms/accounts/CreateSupervisor"
 import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner"
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -43,7 +44,7 @@ export default function DhowManagerDashboard() {
   const { data: bookingsData, isLoading: bookingsLoading, refetch: refetchBookings } = useFetchBookings()
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
-  const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
+  const [activeModal, setActiveModal] = useState<"agent" | "manager" | "supervisor" | null>(null)
   const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null)
 
 
@@ -415,6 +416,15 @@ export default function DhowManagerDashboard() {
                     >
                       Create Dhow Manager
                     </button>
+                    <button
+                      onClick={() => {
+                        setActiveModal("supervisor")
+                        setIsPopoverOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      Create Supervisor
+                    </button>
                   </div>
                 </>
               )}
@@ -461,6 +471,11 @@ export default function DhowManagerDashboard() {
                             Manager
                           </span>
                         )}
+                        {user.is_supervisor && (
+                          <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
+                            Supervisor
+                          </span>
+                        )}
                         {user.is_agent && (
                           <span className="px-2 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-green-50 text-green-700 border border-green-100">
                             Agent
@@ -501,7 +516,11 @@ export default function DhowManagerDashboard() {
           <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-scaleIn border border-slate-100">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                {activeModal === "agent" ? "Create New Agent" : "Create Dhow Manager"}
+                {activeModal === "agent" 
+                  ? "Create New Agent" 
+                  : activeModal === "manager" 
+                  ? "Create Dhow Manager" 
+                  : "Create Supervisor"}
               </h3>
               <button 
                 onClick={closeModal}
@@ -513,8 +532,10 @@ export default function DhowManagerDashboard() {
             <div className="p-6">
               {activeModal === "agent" ? (
                 <CreateAgent onSuccess={handleSuccess} onCancel={closeModal} />
-              ) : (
+              ) : activeModal === "manager" ? (
                 <CreateDhowManager onSuccess={handleSuccess} onCancel={closeModal} />
+              ) : (
+                <CreateSupervisor onSuccess={handleSuccess} onCancel={closeModal} />
               )}
             </div>
           </div>

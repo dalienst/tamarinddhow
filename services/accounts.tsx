@@ -108,6 +108,15 @@ export const signupDhowManager = async (data: SignupGuest, headers: { headers: {
   return response.data;
 };
 
+export const signupSupervisor = async (data: SignupGuest, headers: { headers: { Authorization: string } }): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/supervisors/signup/`,
+    data,
+    headers
+  );
+  return response.data;
+};
+
 export const signupAgent = async (data: SignupAgent, headers: { headers: { Authorization: string } }): Promise<any> => {
   const response: AxiosResponse<any> = await apiActions.post(
     `/api/v1/auth/agents/signup/`,

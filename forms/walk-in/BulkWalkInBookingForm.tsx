@@ -72,7 +72,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     childCount: "0",
     customAdultPrice: "",
     customChildPrice: "",
-    cancellationPreference: "refund",
+    cancellationPreference: "confirmed",
     tableRequest: "",
     specialRequests: "",
     discountType: "amount",

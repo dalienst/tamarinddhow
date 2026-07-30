@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useFetchBookings } from "@/hooks/bookings/actions";
 import { cancelBooking, updateBooking } from "@/services/bookings";
 import { useFetchSchedules } from "@/hooks/vessels/actions";
@@ -21,30 +22,25 @@ import {
   RotateCcw
 } from "lucide-react";
 import toast from "react-hot-toast";
-import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
-import BulkWalkInBookingForm from "@/forms/walk-in/BulkWalkInBookingForm";
 import { SkeletonCard } from "@/components/common/Skeleton";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 import { createRefund, getPayments } from "@/services/payments";
 import { Payment } from "@/types/payment";
 import { Booking } from "@/types/booking";
 
-
-
 export default function WalkInBookingPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const token = session?.user?.token || "";
 
   // Modals state
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
   const [selectedNewScheduleId, setSelectedNewScheduleId] = useState("");
   const [isSavingReschedule, setIsSavingReschedule] = useState(false);
   const [cancelTargetRef, setCancelTargetRef] = useState<string | null>(null);
   const [isCancellingRef, setIsCancellingRef] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"active" | "past">("active");
-  const [formMode, setFormMode] = useState<"single" | "bulk">("single");
+
 
   // Refund states
   const [refundTarget, setRefundTarget] = useState<Booking | null>(null);
@@ -199,12 +195,13 @@ export default function WalkInBookingPage() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setIsFormOpen(true)}
+            onClick={() => router.push("/dhow-manager/walk-in/create")}
             className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-600/15 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             <UserPlus className="w-4 h-4" />
             Register Walk-In
           </button>
+
         </div>
       </div>
 
@@ -308,11 +305,9 @@ export default function WalkInBookingPage() {
                           {active && (
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => {
-                                  setEditingBooking(booking);
-                                  setIsFormOpen(true);
-                                }}
+                                onClick={() => router.push(`/dhow-manager/walk-in/${booking.reference}/edit`)}
                                 className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+
                                 title="Edit Booking Details"
                               >
                                 <Edit className="w-3.5 h-3.5 text-blue-600" />
@@ -369,75 +364,7 @@ export default function WalkInBookingPage() {
         )}
       </div>
 
-      {/* MODAL 1: Registration Entry Form */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className={`bg-white rounded-2xl shadow-xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4 border border-slate-100 animate-slideUp relative transition-all ${
-            formMode === "bulk" ? "max-w-7xl" : "max-w-4xl"
-          }`}>
-            <button
-              onClick={() => {
-                setIsFormOpen(false);
-                setFormMode("single");
-                setEditingBooking(null);
-              }}
-              className="absolute top-4 right-4 p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3 pr-10">
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-6 h-6 text-amber-600" />
-                <h2 className="text-xl font-bold text-slate-800">
-                  {editingBooking ? `Edit Booking Details (${editingBooking.reference})` : "Register Walk-In Booking"}
-                </h2>
-              </div>
-              {!editingBooking && (
-                <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-bold border border-slate-200">
-                  <button
-                    onClick={() => setFormMode("single")}
-                    className={`px-3.5 py-1.5 rounded-md transition-all ${
-                      formMode === "single" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Single Guest Booking
-                  </button>
-                  <button
-                    onClick={() => setFormMode("bulk")}
-                    className={`px-3.5 py-1.5 rounded-md transition-all ${
-                      formMode === "bulk" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                    }`}
-                  >
-                    Bulk Group Entry
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="pt-2">
-              {editingBooking || formMode === "single" ? (
-                <WalkInBookingForm 
-                  token={token} 
-                  bookingToEdit={editingBooking || undefined}
-                  onSuccess={() => {
-                    refetchWalkIns();
-                    setIsFormOpen(false);
-                    setEditingBooking(null);
-                  }} 
-                />
-              ) : (
-                <BulkWalkInBookingForm
-                  token={token}
-                  onSuccess={() => {
-                    refetchWalkIns();
-                    setIsFormOpen(false);
-                    setFormMode("single");
-                  }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* MODAL 2: Reschedule Booking Voyage */}
       {rescheduleTarget && (

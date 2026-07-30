@@ -27,12 +27,12 @@ import CreateAgent from "@/forms/accounts/CreateAgent"
 import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
 import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner"
 import { useSession } from "next-auth/react";
-import { BookingEditModal } from "@/components/dhow-manager/BookingEditModal";
+import { useRouter } from "next/navigation";
 import { TicketQRModal } from "@/components/dhow-manager/TicketQRModal";
 import { Booking } from "@/types/booking";
 
 export default function DhowManagerDashboard() {
-
+  const router = useRouter();
   const { data: session } = useSession();
   const token = session?.user?.token || "";
 
@@ -44,8 +44,8 @@ export default function DhowManagerDashboard() {
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
-  const [selectedEditBooking, setSelectedEditBooking] = useState<Booking | null>(null)
   const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null)
+
 
 
   if (accountLoading || accountsLoading || schedulesLoading || dhowsLoading || bookingsLoading) {
@@ -335,12 +335,13 @@ export default function DhowManagerDashboard() {
                     <td className="px-6 py-4.5">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => setSelectedEditBooking(b)}
+                          onClick={() => router.push(`/dhow-manager/walk-in/${b.reference}/edit`)}
                           className="p-1 text-slate-400 hover:text-amber-600 transition-colors"
                           title="Edit Booking"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
+
                         <button
                           onClick={() => setSelectedQrRef(b.reference)}
                           className="p-1 text-slate-400 hover:text-amber-600 transition-colors"
@@ -512,15 +513,7 @@ export default function DhowManagerDashboard() {
           </div>
         </div>
       )}
-      {selectedEditBooking && (
-        <BookingEditModal
-          isOpen={!!selectedEditBooking}
-          onClose={() => setSelectedEditBooking(null)}
-          booking={selectedEditBooking}
-          token={token}
-          onSuccess={refetchBookings}
-        />
-      )}
+
       {selectedQrRef && (
         <TicketQRModal
           isOpen={!!selectedQrRef}

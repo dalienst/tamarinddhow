@@ -21,9 +21,9 @@ import {
   QrCode
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import { updateBookingGuest } from "@/services/bookings";
 import { assignTable } from "@/services/vessels";
-import { BookingEditModal } from "./BookingEditModal";
 import { TicketQRModal } from "./TicketQRModal";
 
 
@@ -46,6 +46,7 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   onStatusChange,
   disabled = false,
 }) => {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>({});
   const [expandedRefs, setExpandedRefs] = useState<Record<string, boolean>>({});
@@ -57,11 +58,9 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
 
-  // Booking edit modal state
-  const [selectedEditBooking, setSelectedEditBooking] = useState<Booking | null>(null);
-
   // QR Code Modal state
   const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null);
+
 
 
 
@@ -381,7 +380,7 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                           </button>
 
                           <button
-                            onClick={() => setSelectedEditBooking(b)}
+                            onClick={() => router.push(`/dhow-manager/walk-in/${b.reference}/edit`)}
                             className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50 transition-all"
                             title="Modify Booking Details"
                           >
@@ -601,15 +600,7 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
         </table>
       </div>
 
-      {selectedEditBooking && (
-        <BookingEditModal
-          isOpen={!!selectedEditBooking}
-          onClose={() => setSelectedEditBooking(null)}
-          booking={selectedEditBooking}
-          token={token}
-          onSuccess={onRefetch}
-        />
-      )}
+
 
       {selectedQrRef && (
         <TicketQRModal

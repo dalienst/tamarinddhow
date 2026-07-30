@@ -586,9 +586,9 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
               onChange={(e) => setCancellationPreference(e.target.value as any)}
               className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
             >
+              <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
               <option value="refund">Refund Money</option>
               <option value="reschedule">Reschedule Date</option>
-              <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
             </select>
           </div>
 

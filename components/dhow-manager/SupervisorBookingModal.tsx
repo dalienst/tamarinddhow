@@ -61,6 +61,24 @@ export function SupervisorBookingModal({
   const [transactionRef, setTransactionRef] = useState("");
   
   const [isSaving, setIsSaving] = useState(false);
+  
+  // State for additional passenger names
+  const [otherGuestNames, setOtherGuestNames] = useState<string[]>([""]);
+
+  const totalPax = (parseInt(adultCount, 10) || 1) + (parseInt(childCount, 10) || 0);
+  const otherPaxCount = Math.max(0, totalPax - 1);
+
+  useEffect(() => {
+    setOtherGuestNames((prev) => {
+      const next = [...prev];
+      if (next.length < otherPaxCount) {
+        while (next.length < otherPaxCount) next.push("");
+      } else if (next.length > otherPaxCount) {
+        next.splice(otherPaxCount);
+      }
+      return next;
+    });
+  }, [adultCount, childCount, otherPaxCount]);
 
   // Pricing math helper values
   const baseAdultPrice = schedule.price_per_person;
@@ -103,6 +121,7 @@ export function SupervisorBookingModal({
           primary_guest_phone: guestPhone.trim() || undefined,
           custom_price_per_person: customAdultPrice ? parseFloat(customAdultPrice) : undefined,
           custom_price_per_child: customChildPrice ? parseFloat(customChildPrice) : undefined,
+          guest_names: otherGuestNames,
         }
       );
 
@@ -219,6 +238,32 @@ export function SupervisorBookingModal({
                   </div>
                 </div>
               </div>
+
+              {/* Additional Passengers Names */}
+              {otherGuestNames.length > 0 && (
+                <div className="space-y-4 pt-4 border-t border-slate-100 animate-fadeIn">
+                  <h4 className="font-bold text-slate-800 text-sm">Additional Passengers Names</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {otherGuestNames.map((name, idx) => (
+                      <div key={idx}>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Passenger #{idx + 2} Full Name</label>
+                        <input
+                          type="text"
+                          disabled={isSaving}
+                          placeholder={`Passenger ${idx + 2} Full Name`}
+                          value={name}
+                          onChange={(e) => {
+                            const copy = [...otherGuestNames];
+                            copy[idx] = e.target.value;
+                            setOtherGuestNames(copy);
+                          }}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Counts and Custom prices */}
               <div className="space-y-4 pt-4 border-t border-slate-100">

@@ -53,6 +53,7 @@ export interface Booking {
   primary_guest_name?: string;
   primary_guest_email?: string;
   primary_guest_phone?: string;
+  guest_names?: string[];
   created_by?: string | null;
   created_at: string;
   updated_at: string;

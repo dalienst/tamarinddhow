@@ -48,6 +48,7 @@ interface BulkBookingRow {
   partialPaymentType: "amount" | "percentage";
   partialPaidAmount: string;
   selectedAddons: { id: string; name: string; price: number; quantity: number }[];
+  otherGuestNames: string[];
 }
 
 export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBookingFormProps) {
@@ -83,6 +84,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     partialPaymentType: "amount",
     partialPaidAmount: "",
     selectedAddons: [],
+    otherGuestNames: [""],
   };
 
   const [rows, setRows] = useState<BulkBookingRow[]>([{ ...defaultRow }]);
@@ -138,6 +140,19 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           }
           if (field === "discountType") {
             updatedRow.discountValue = "0";
+          }
+          // Resize otherGuestNames when guest counts change
+          if (field === "adultCount" || field === "childCount") {
+            const ac = field === "adultCount" ? parseInt(value as string, 10) || 1 : parseInt(updatedRow.adultCount, 10) || 1;
+            const cc = field === "childCount" ? parseInt(value as string, 10) || 0 : parseInt(updatedRow.childCount, 10) || 0;
+            const targetCount = Math.max(0, ac + cc - 1);
+            const names = [...updatedRow.otherGuestNames];
+            if (names.length < targetCount) {
+              while (names.length < targetCount) names.push("");
+            } else if (names.length > targetCount) {
+              names.splice(targetCount);
+            }
+            updatedRow.otherGuestNames = names;
           }
           return updatedRow;
         }
@@ -317,6 +332,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           is_partial_payment: row.isPartialPayment,
           partial_paid_amount: pricing.paidAmount,
           addons: row.selectedAddons.map((sa) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
+          guest_names: row.otherGuestNames,
         };
       });
 
@@ -497,6 +513,32 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                           </div>
                         </div>
                       </div>
+
+                      {/* Additional passengers names list */}
+                      {row.otherGuestNames && row.otherGuestNames.length > 0 && (
+                        <div className="space-y-4 pt-4 border-t border-slate-100 animate-fadeIn">
+                          <h4 className="font-bold text-slate-800 text-sm">Additional Passengers Names</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {row.otherGuestNames.map((gName, gIdx) => (
+                              <div key={gIdx}>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">Passenger #{gIdx + 2} Full Name</label>
+                                <input
+                                  type="text"
+                                  disabled={isSaving}
+                                  placeholder={`Passenger ${gIdx + 2} Full Name`}
+                                  value={gName}
+                                  onChange={(e) => {
+                                    const copy = [...row.otherGuestNames];
+                                    copy[gIdx] = e.target.value;
+                                    updateRow(index, "otherGuestNames", copy);
+                                  }}
+                                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Guest Custom Overrides */}
                       <div className="space-y-4 pt-4 border-t border-slate-100">

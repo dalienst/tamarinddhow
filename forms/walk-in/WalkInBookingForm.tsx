@@ -6,6 +6,7 @@ import { createPayment } from "@/services/payments";
 import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign, Plus, Minus, ShoppingBag } from "lucide-react";
 import toast from "react-hot-toast";
+import axios from "axios";
 import { Booking } from "@/types/booking";
 
 interface WalkInBookingFormProps {
@@ -62,7 +63,27 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   const [isPartialPayment, setIsPartialPayment] = useState(false);
   const [partialPaymentType, setPartialPaymentType] = useState<"amount" | "percentage">("amount");
   const [partialPaidAmount, setPartialPaidAmount] = useState("");
+  
+  // State for additional passenger names
+  const [otherGuestNames, setOtherGuestNames] = useState<string[]>([]);
+  
   const [isSaving, setIsSaving] = useState(false);
+
+  // Dynamically size otherGuestNames based on guest counts
+  const totalPax = (parseInt(adultCount, 10) || 1) + (parseInt(childCount, 10) || 0);
+  const otherPaxCount = Math.max(0, totalPax - 1);
+
+  useEffect(() => {
+    setOtherGuestNames((prev) => {
+      const next = [...prev];
+      if (next.length < otherPaxCount) {
+        while (next.length < otherPaxCount) next.push("");
+      } else if (next.length > otherPaxCount) {
+        next.splice(otherPaxCount);
+      }
+      return next;
+    });
+  }, [adultCount, childCount, otherPaxCount]);
 
   useEffect(() => {
     if (bookingToEdit) {
@@ -81,6 +102,11 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
       setSpecialRequests(bookingToEdit.special_requests || "");
       setCancellationPreference(bookingToEdit.cancellation_preference);
       
+      if (bookingToEdit.booking_guests) {
+        const others = bookingToEdit.booking_guests.filter(g => !g.is_primary);
+        setOtherGuestNames(others.map(o => `${o.first_name} ${o.last_name}`.trim()));
+      }
+
       if (bookingToEdit.booking_addons) {
         setSelectedAddons(
           bookingToEdit.booking_addons.map((ba) => ({
@@ -91,12 +117,40 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
           }))
         );
       }
+
+      // Fetch payment details for prefilling edit form
+      axios.get(`/api/v1/payments/?booking=${bookingToEdit.id}`, {
+        headers: { Authorization: `Token ${token}` }
+      }).then((res) => {
+        const payments = res.data.results || [];
+        const completedPayment = payments.find((p: any) => p.status === "completed");
+        if (completedPayment) {
+          setPaymentState(completedPayment.payment_method);
+          setTransactionRef(completedPayment.transaction_ref || "");
+          const paid = parseFloat(completedPayment.amount);
+          const total = parseFloat(bookingToEdit.total_amount.toString());
+          if (paid < total) {
+            setIsPartialPayment(true);
+            setPartialPaymentType("amount");
+            setPartialPaidAmount(paid.toString());
+          } else {
+            setIsPartialPayment(false);
+            setPartialPaidAmount("");
+          }
+        } else {
+          setPaymentState("unpaid");
+          setIsPartialPayment(false);
+          setPartialPaidAmount("");
+        }
+      }).catch((err) => {
+        console.error("Failed to load payments for booking:", err);
+      });
     } else if (initialScheduleId) {
       setSelectedScheduleId(initialScheduleId);
     } else if (upcomingSchedules.length > 0 && !selectedScheduleId) {
       setSelectedScheduleId(upcomingSchedules[0].id);
     }
-  }, [upcomingSchedules, selectedScheduleId, initialScheduleId, bookingToEdit]);
+  }, [upcomingSchedules, selectedScheduleId, initialScheduleId, bookingToEdit, token]);
 
   // Compute pricing dynamically
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);
@@ -187,9 +241,76 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
             discount_value: parseFloat(discountValue) || 0,
             discount_reason: discountReason || undefined,
             addons: selectedAddons.map((sa: SelectedAddonItem) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
+            guest_names: otherGuestNames,
           },
           token
         );
+
+        // Handle payment sync on edit
+        const paymentsRes = await axios.get(`/api/v1/payments/?booking=${bookingToEdit.id}`, {
+          headers: { Authorization: `Token ${token}` }
+        });
+        const payments = paymentsRes.data.results || [];
+        const completedPayment = payments.find((p: any) => p.status === "completed");
+
+        if (paymentState === "unpaid") {
+          if (completedPayment) {
+            await axios.delete(`/api/v1/payments/${completedPayment.reference}/`, {
+              headers: { Authorization: `Token ${token}` }
+            });
+          }
+          if (booking.status !== "pending") {
+            await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: "pending" }, {
+              headers: { Authorization: `Token ${token}` }
+            });
+          }
+        } else {
+          const depositVal = parseFloat(partialPaidAmount) || 0;
+          const payAmount = isPartialPayment
+            ? (partialPaymentType === "percentage" ? finalTotal * (depositVal / 100) : depositVal)
+            : finalTotal;
+
+          if (completedPayment) {
+            await axios.put(
+              `/api/v1/payments/${completedPayment.reference}/`,
+              {
+                booking: bookingToEdit.id,
+                amount: payAmount,
+                payment_method: paymentState,
+                status: "completed",
+                phone_number: guestPhone || undefined,
+                transaction_ref: transactionRef.trim() || undefined,
+                notes: isPartialPayment 
+                  ? `Walk-in partial deposit collected by manager via ${paymentState.toUpperCase()}. Remaining balance: KES ${(finalTotal - payAmount).toLocaleString()}`
+                  : `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
+              },
+              { headers: { Authorization: `Token ${token}` } }
+            );
+          } else {
+            await axios.post(
+              `/api/v1/payments/`,
+              {
+                booking: bookingToEdit.id,
+                amount: payAmount,
+                payment_method: paymentState,
+                status: "completed",
+                phone_number: guestPhone || undefined,
+                transaction_ref: transactionRef.trim() || undefined,
+                notes: isPartialPayment 
+                  ? `Walk-in partial deposit collected by manager via ${paymentState.toUpperCase()}. Remaining balance: KES ${(finalTotal - payAmount).toLocaleString()}`
+                  : `Walk-in payment collected by manager via ${paymentState.toUpperCase()}`,
+              },
+              { headers: { Authorization: `Token ${token}` } }
+            );
+          }
+
+          if (booking.status === "pending") {
+            await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: "confirmed" }, {
+              headers: { Authorization: `Token ${token}` }
+            });
+          }
+        }
+
         toast.success(`Booking ${booking.reference} updated successfully!`);
       } else {
         booking = await createBooking(
@@ -212,6 +333,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
             discount_value: parseFloat(discountValue) || 0,
             discount_reason: discountReason || undefined,
             addons: selectedAddons.map((sa: SelectedAddonItem) => ({ addon: sa.id, quantity: sa.quantity, unit_price: sa.price })),
+            guest_names: otherGuestNames,
           },
           token
         );
@@ -336,6 +458,32 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
           </div>
         </div>
       </div>
+
+      {/* Additional Passengers Names */}
+      {otherGuestNames.length > 0 && (
+        <div className="space-y-4 pt-4 border-t border-slate-100 animate-fadeIn">
+          <h3 className="font-bold text-slate-800 text-sm">Additional Passengers Names</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {otherGuestNames.map((name, idx) => (
+              <div key={idx}>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Passenger #{idx + 2} Full Name</label>
+                <input
+                  type="text"
+                  disabled={isSaving}
+                  placeholder={`Passenger ${idx + 2} Full Name`}
+                  value={name}
+                  onChange={(e) => {
+                    const copy = [...otherGuestNames];
+                    copy[idx] = e.target.value;
+                    setOtherGuestNames(copy);
+                  }}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Booking Details & Preferences */}
       <div className="space-y-4 pt-4 border-t border-slate-100">
@@ -689,64 +837,62 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
         </div>
       </div>
 
-      {/* EXPLICIT PAYMENT STATES (Only shown when creating new bookings) */}
-      {!bookingToEdit && (
-        <div className="space-y-3 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border">
-          <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
-            {[
-              { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
-              { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
-              { id: "visa", label: "Paid — Visa", desc: "Visa Card" },
-              { id: "mastercard", label: "Paid — Mastercard", desc: "Mastercard" },
-              { id: "staff_card", label: "Staff Card", desc: "Staff Special Card" },
-              { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
-              { id: "waived", label: "Waived", desc: "Complimentary" },
-              { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
-            ].map((p) => (
-              <button
-                type="button"
-                key={p.id}
-                disabled={isSaving}
-                onClick={() => {
-                  setPaymentState(p.id as any);
-                  if (p.id === "unpaid") {
-                    setIsPartialPayment(false);
-                    setPartialPaidAmount("");
-                  }
-                }}
-                className={`p-3 rounded-lg border text-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
-                  paymentState === p.id
-                    ? "bg-amber-600 text-white border-amber-700 shadow-sm font-semibold"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-amber-400"
-                }`}
-              >
-                <div className="text-xs font-bold">{p.label}</div>
-                <div className={`text-[10px] ${paymentState === p.id ? "text-amber-100" : "text-slate-400"}`}>
-                  {p.desc}
-                </div>
-              </button>
-            ))}
-          </div>
-          {paymentState !== "unpaid" && (
-            <div className="pt-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                {paymentState === "mpesa" ? "M-Pesa Transaction Reference / Code (Optional)" : "Transaction Reference / Code (Optional)"}
-              </label>
-              <input
-                type="text"
-                disabled={isSaving}
-                placeholder={paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No., Bank Ref"}
-                value={transactionRef}
-                onChange={(e) => setTransactionRef(e.target.value)}
-                className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold text-slate-800 uppercase"
-              />
-            </div>
-          )}
+      {/* EXPLICIT PAYMENT STATES */}
+      <div className="space-y-3 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border">
+        <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+          {[
+            { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
+            { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
+            { id: "visa", label: "Paid — Visa", desc: "Visa Card" },
+            { id: "mastercard", label: "Paid — Mastercard", desc: "Mastercard" },
+            { id: "staff_card", label: "Staff Card", desc: "Staff Special Card" },
+            { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
+            { id: "waived", label: "Waived", desc: "Complimentary" },
+            { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
+          ].map((p) => (
+            <button
+              type="button"
+              key={p.id}
+              disabled={isSaving}
+              onClick={() => {
+                setPaymentState(p.id as any);
+                if (p.id === "unpaid") {
+                  setIsPartialPayment(false);
+                  setPartialPaidAmount("");
+                }
+              }}
+              className={`p-3 rounded-lg border text-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                paymentState === p.id
+                  ? "bg-amber-600 text-white border-amber-700 shadow-sm font-semibold"
+                  : "bg-white text-slate-700 border-slate-200 hover:border-amber-400"
+              }`}
+            >
+              <div className="text-xs font-bold">{p.label}</div>
+              <div className={`text-[10px] ${paymentState === p.id ? "text-amber-100" : "text-slate-400"}`}>
+                {p.desc}
+              </div>
+            </button>
+          ))}
         </div>
-      )}
+        {paymentState !== "unpaid" && (
+          <div className="pt-2">
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              {paymentState === "mpesa" ? "M-Pesa Transaction Reference / Code (Optional)" : "Transaction Reference / Code (Optional)"}
+            </label>
+            <input
+              type="text"
+              disabled={isSaving}
+              placeholder={paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No., Bank Ref"}
+              value={transactionRef}
+              onChange={(e) => setTransactionRef(e.target.value)}
+              className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 bg-white font-semibold text-slate-800 uppercase"
+            />
+          </div>
+        )}
+      </div>
 
       {/* Submit */}
       <button

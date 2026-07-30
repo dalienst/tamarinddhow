@@ -67,6 +67,9 @@ export default function PublicManifestPage() {
   const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
+  
+  // Supervisor walk-in booking state
+  const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
 
 
   // Local state to keep track of checked-in guests at the dock
@@ -251,6 +254,14 @@ export default function PublicManifestPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setIsWalkInModalOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-emerald-600/10 border border-emerald-500/25"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Register Walk-In
+                </button>
+
                 {/* Manual Sync Button */}
                 <button
                   onClick={() => fetchManifest(false, true)}
@@ -552,6 +563,14 @@ export default function PublicManifestPage() {
           </div>
         </div>
       </div>
+
+      <SupervisorBookingModal
+        isOpen={isWalkInModalOpen}
+        onClose={() => setIsWalkInModalOpen(false)}
+        schedule={schedule}
+        manifestToken={token}
+        onSuccess={() => fetchManifest(false, true)}
+      />
     </div>
   );
 }

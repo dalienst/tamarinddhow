@@ -67,12 +67,32 @@ export const updateBooking = async (
 
 export const cancelBooking = async (
   reference: string,
-  token: string
+  token: string,
+  isManifestToken?: boolean
 ): Promise<Booking> => {
+  const headers = isManifestToken
+    ? { "X-Manifest-Token": token }
+    : { Authorization: `Token ${token}` };
   const response: AxiosResponse<Booking> = await apiActions.patch(
     `/api/v1/bookings/${reference}/cancel/`,
     {},
-    { headers: { Authorization: `Token ${token}` } }
+    { headers }
+  );
+  return response.data;
+};
+
+export const noShowBooking = async (
+  reference: string,
+  token: string,
+  isManifestToken?: boolean
+): Promise<Booking> => {
+  const headers = isManifestToken
+    ? { "X-Manifest-Token": token }
+    : { Authorization: `Token ${token}` };
+  const response: AxiosResponse<Booking> = await apiActions.patch(
+    `/api/v1/bookings/${reference}/no-show/`,
+    {},
+    { headers }
   );
   return response.data;
 };

@@ -73,7 +73,7 @@ export default function EditBookingPage() {
   }
 
   return (
-    <div className="p-6 sm:p-8 max-w-4xl mx-auto space-y-6 animate-fadeIn">
+    <div className="p-6 sm:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
       {/* Back navigation & Header */}
       <div className="space-y-4">
         <button

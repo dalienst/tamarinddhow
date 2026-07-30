@@ -14,7 +14,9 @@ import {
   Anchor,
   Clock,
   Plus,
-  X
+  X,
+  Pencil,
+  QrCode
 } from "lucide-react";
 
 import { useFetchAccount, useFetchAllUsers } from "@/hooks/accounts/actions"
@@ -24,20 +26,32 @@ import { User } from "@/services/accounts"
 import CreateAgent from "@/forms/accounts/CreateAgent"
 import CreateDhowManager from "@/forms/accounts/CreateDhowManager"
 import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner"
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { TicketQRModal } from "@/components/dhow-manager/TicketQRModal";
+import { Booking } from "@/types/booking";
 
 export default function DhowManagerDashboard() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const token = session?.user?.token || "";
+
   const { data: account, isLoading: accountLoading } = useFetchAccount()
   const { data: accountsData, isLoading: accountsLoading, error: accountsError, refetch } = useFetchAllUsers()
   const { data: schedulesData, isLoading: schedulesLoading } = useFetchSchedules()
   const { data: dhowsData, isLoading: dhowsLoading } = useFetchDhows()
-  const { data: bookingsData, isLoading: bookingsLoading } = useFetchBookings()
+  const { data: bookingsData, isLoading: bookingsLoading, refetch: refetchBookings } = useFetchBookings()
   
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
   const [activeModal, setActiveModal] = useState<"agent" | "manager" | null>(null)
+  const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null)
+
+
 
   if (accountLoading || accountsLoading || schedulesLoading || dhowsLoading || bookingsLoading) {
       return <LoadingSpinner />
   }
+
 
   if (accountsError) {
       return (
@@ -291,6 +305,7 @@ export default function DhowManagerDashboard() {
                   <th className="px-6 py-3">Pax Count</th>
                   <th className="px-6 py-3">Total Amount</th>
                   <th className="px-6 py-3">Status</th>
+                  <th className="px-6 py-3">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
@@ -317,16 +332,37 @@ export default function DhowManagerDashboard() {
                         {b.status_display || b.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4.5">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => router.push(`/dhow-manager/walk-in/${b.reference}/edit`)}
+                          className="p-1 text-slate-400 hover:text-amber-600 transition-colors"
+                          title="Edit Booking"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => setSelectedQrRef(b.reference)}
+                          className="p-1 text-slate-400 hover:text-amber-600 transition-colors"
+                          title="View Ticket QR"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
+
                 ))}
                 {bookings.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-400 font-semibold">
+                    <td colSpan={5} className="py-8 text-center text-slate-400 font-semibold">
                       No bookings recorded.
                     </td>
                   </tr>
                 )}
               </tbody>
+
             </table>
           </div>
         </div>
@@ -477,6 +513,15 @@ export default function DhowManagerDashboard() {
           </div>
         </div>
       )}
+
+      {selectedQrRef && (
+        <TicketQRModal
+          isOpen={!!selectedQrRef}
+          onClose={() => setSelectedQrRef(null)}
+          bookingRef={selectedQrRef}
+        />
+      )}
     </div>
   );
 }
+

@@ -15,11 +15,17 @@ import {
   UserX,
   UtensilsCrossed,
   X,
-  Loader2
+  Loader2,
+  Pencil,
+  Settings,
+  QrCode
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 import { updateBookingGuest } from "@/services/bookings";
 import { assignTable } from "@/services/vessels";
+import { TicketQRModal } from "./TicketQRModal";
+
 
 interface DigitalCheckInListProps {
   bookings: Booking[];
@@ -40,11 +46,24 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
   onStatusChange,
   disabled = false,
 }) => {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [checkInMap, setCheckInMap] = useState<Record<string, CheckInStatus>>({});
   const [expandedRefs, setExpandedRefs] = useState<Record<string, boolean>>({});
   const [processingTables, setProcessingTables] = useState<Record<string, boolean>>({});
   const [processingGuests, setProcessingGuests] = useState<Record<string, boolean>>({});
+
+  // Guest inline edit states
+  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+
+  // QR Code Modal state
+  const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null);
+
+
+
+
 
   useEffect(() => {
     const initial: Record<string, CheckInStatus> = {};
@@ -359,6 +378,22 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                           >
                             <XCircle className="w-5 h-5" />
                           </button>
+
+                          <button
+                            onClick={() => router.push(`/dhow-manager/walk-in/${b.reference}/edit`)}
+                            className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                            title="Modify Booking Details"
+                          >
+                            <Settings className="w-5 h-5" />
+                          </button>
+
+                          <button
+                            onClick={() => setSelectedQrRef(b.reference)}
+                            className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                            title="View Ticket QR Code"
+                          >
+                            <QrCode className="w-5 h-5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -383,24 +418,86 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {b.booking_guests.map((g) => {
                                   const isGuestLoading = !!processingGuests[g.id];
+                                  const isEditing = editingGuestId === g.id;
 
                                   return (
                                     <div 
                                       key={g.id} 
                                       className="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-xs transition-all hover:border-slate-300"
                                     >
-                                      <div className="space-y-0.5">
-                                        <div className="text-xs font-extrabold text-slate-800">
-                                          {g.first_name} {g.last_name}
-                                          {g.is_primary && (
-                                            <span className="text-[8px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase ml-1.5">
-                                              Primary
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
-                                          {g.email || g.phone || "No contact info"}
-                                        </div>
+                                      <div className="space-y-1 flex-1 min-w-0 pr-2">
+                                        {isEditing ? (
+                                          <div className="space-y-1.5">
+                                            <div className="flex gap-1.5">
+                                              <input
+                                                type="text"
+                                                value={editFirstName}
+                                                onChange={(e) => setEditFirstName(e.target.value)}
+                                                placeholder="First"
+                                                className="w-1/2 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold"
+                                              />
+                                              <input
+                                                type="text"
+                                                value={editLastName}
+                                                onChange={(e) => setEditLastName(e.target.value)}
+                                                placeholder="Last"
+                                                className="w-1/2 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold"
+                                              />
+                                            </div>
+                                            <div className="flex gap-1">
+                                              <button
+                                                onClick={async () => {
+                                                  if (!editFirstName.trim() || !editLastName.trim()) {
+                                                    toast.error("Names cannot be empty");
+                                                    return;
+                                                  }
+                                                  try {
+                                                    await updateBookingGuest(g.id, { first_name: editFirstName.trim(), last_name: editLastName.trim() }, token);
+                                                    toast.success("Guest renamed successfully!");
+                                                    setEditingGuestId(null);
+                                                    onRefetch();
+                                                  } catch (err) {
+                                                    toast.error("Failed to rename guest");
+                                                  }
+                                                }}
+                                                className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold transition-colors"
+                                              >
+                                                Save
+                                              </button>
+                                              <button
+                                                onClick={() => setEditingGuestId(null)}
+                                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold transition-colors"
+                                              >
+                                                Cancel
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <>
+                                            <div className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                                              <span>{g.first_name} {g.last_name}</span>
+                                              <button
+                                                onClick={() => {
+                                                  setEditingGuestId(g.id);
+                                                  setEditFirstName(g.first_name);
+                                                  setEditLastName(g.last_name);
+                                                }}
+                                                className="text-slate-400 hover:text-slate-600 transition-colors"
+                                                title="Rename guest"
+                                              >
+                                                <Pencil className="w-3 h-3" />
+                                              </button>
+                                              {g.is_primary && (
+                                                <span className="text-[8px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-bold uppercase">
+                                                  Primary
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                              {g.email || g.phone || "No contact info"}
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                       
                                       <div className="flex items-center gap-1">
@@ -502,6 +599,18 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
           </tbody>
         </table>
       </div>
+
+
+
+      {selectedQrRef && (
+        <TicketQRModal
+          isOpen={!!selectedQrRef}
+          onClose={() => setSelectedQrRef(null)}
+          bookingRef={selectedQrRef}
+        />
+      )}
     </div>
   );
 };
+
+

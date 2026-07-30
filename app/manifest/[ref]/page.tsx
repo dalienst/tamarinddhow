@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import { useParams, useSearchParams } from "next/navigation";
 import { getPublicManifest } from "@/services/vessels";
 import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/bookings";
-import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2 } from "lucide-react";
+import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface ManifestGuest {
@@ -58,6 +58,12 @@ export default function PublicManifestPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [copied, setCopied] = useState(false);
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+  
+  // Guest editing state
+  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+
 
   // Local state to keep track of checked-in guests at the dock
   const [boardedGuests, setBoardedGuests] = useState<Record<string, boolean>>({});
@@ -431,31 +437,104 @@ export default function PublicManifestPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         {b.booking_guests.map((g) => {
                           const isBoarded = !!boardedGuests[g.id];
+                          const isEditing = editingGuestId === g.id;
+
                           return (
-                            <button
+                            <div
                               key={g.id}
-                              onClick={() => handleToggleBoarding(g.id)}
-                              className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group ${
+                              onClick={() => {
+                                if (!isEditing) handleToggleBoarding(g.id);
+                              }}
+                              className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group relative ${
+                                isEditing ? "bg-white border-amber-300 ring-2 ring-amber-500/10 cursor-default" :
                                 isBoarded
-                                  ? "bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold"
-                                  : "bg-white border-slate-200 text-slate-700 font-semibold"
+                                  ? "bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold cursor-pointer"
+                                  : "bg-white border-slate-200 text-slate-700 font-semibold cursor-pointer"
                               }`}
                             >
-                              <div className="truncate pr-2">
-                                <div className="text-xs truncate">{g.first_name} {g.last_name}</div>
-                                {g.is_primary && <div className="text-[8px] text-amber-700 uppercase tracking-wider">Primary</div>}
+                              <div className="flex-1 min-w-0 pr-2">
+                                {isEditing ? (
+                                  <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex gap-1.5">
+                                      <input
+                                        type="text"
+                                        value={editFirstName}
+                                        onChange={(e) => setEditFirstName(e.target.value)}
+                                        placeholder="First Name"
+                                        className="w-1/2 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={editLastName}
+                                        onChange={(e) => setEditLastName(e.target.value)}
+                                        placeholder="Last Name"
+                                        className="w-1/2 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-amber-500 font-semibold"
+                                      />
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <button
+                                        onClick={async () => {
+                                          if (!editFirstName.trim() || !editLastName.trim()) {
+                                            toast.error("Names cannot be empty");
+                                            return;
+                                          }
+                                          try {
+                                            await updateBookingGuest(g.id, { first_name: editFirstName.trim(), last_name: editLastName.trim() }, token, true);
+                                            toast.success("Guest renamed successfully!");
+                                            setEditingGuestId(null);
+                                            fetchManifest(false, false);
+                                          } catch (err) {
+                                            toast.error("Failed to rename guest");
+                                          }
+                                        }}
+                                        className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-bold transition-colors"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingGuestId(null)}
+                                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold transition-colors"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="text-xs truncate flex items-center gap-1.5">
+                                      <span>{g.first_name} {g.last_name}</span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setEditingGuestId(g.id);
+                                          setEditFirstName(g.first_name);
+                                          setEditLastName(g.last_name);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-slate-600 transition-opacity focus:opacity-100"
+                                        title="Rename passenger"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                    {g.is_primary && <div className="text-[8px] text-amber-700 uppercase tracking-wider">Primary</div>}
+                                  </>
+                                )}
                               </div>
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                isBoarded ? "bg-emerald-600 text-white" : "bg-slate-100 text-transparent group-hover:bg-slate-200"
-                              }`}>
-                                <Check className="w-3.5 h-3.5" />
-                              </div>
-                            </button>
+                              
+                              {!isEditing && (
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                  isBoarded ? "bg-emerald-600 text-white" : "bg-slate-100 text-transparent group-hover:bg-slate-200"
+                                }`}>
+                                  <Check className="w-3.5 h-3.5" />
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
                     </div>
                   )}
+
                 </div>
               );
             })}

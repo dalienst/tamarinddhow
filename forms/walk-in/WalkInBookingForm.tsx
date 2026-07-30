@@ -44,7 +44,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund">("refund");
   const [tableRequest, setTableRequest] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
-  const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived">("cash");
+  const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "agent_credit" | "waived" | "staff_card" | "mastercard" | "visa">("cash");
   const [transactionRef, setTransactionRef] = useState("");
   
   // Custom prices
@@ -694,10 +694,13 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
           <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
             {[
               { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
               { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
+              { id: "visa", label: "Paid — Visa", desc: "Visa Card" },
+              { id: "mastercard", label: "Paid — Mastercard", desc: "Mastercard" },
+              { id: "staff_card", label: "Staff Card", desc: "Staff Special Card" },
               { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
               { id: "waived", label: "Waived", desc: "Complimentary" },
               { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },

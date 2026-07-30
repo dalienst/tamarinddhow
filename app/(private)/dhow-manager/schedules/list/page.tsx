@@ -402,11 +402,11 @@ export default function ScheduleListPage() {
                     onChange={(e) => setMealType(e.target.value as any)}
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                   >
+                    <option value="dinner_cruise">Dinner Cruise</option>
                     <option value="lunch">Lunch</option>
                     <option value="sunset_cruise">Sunset Cruise</option>
                     <option value="booze_cruise">Booze Cruise</option>
                     <option value="special_cruise">Special Cruise</option>
-                    <option value="dinner_cruise">Dinner Cruise</option>
                   </select>
                 </div>
               </div>

@@ -36,6 +36,8 @@ export default function LoginPage() {
         toast.success("Welcome back!");
         if (session?.user?.is_dhow_manager === true) {
           router.push("/dhow-manager/dashboard");
+        } else if (session?.user?.is_supervisor === true) {
+          router.push("/supervisor/dashboard");
         } else if (session?.user?.is_staff === true) {
           router.push("/superuser/dashboard");
         } else if (session?.user?.is_guest === true) {

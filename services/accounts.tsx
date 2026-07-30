@@ -18,6 +18,7 @@ export interface User {
   address: string | null;
   is_guest: boolean;
   is_dhow_manager: boolean;
+  is_supervisor: boolean;
   is_agent: boolean;
   is_staff: boolean;
   is_superuser: boolean;

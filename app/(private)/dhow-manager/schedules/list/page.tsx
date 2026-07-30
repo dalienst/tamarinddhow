@@ -33,8 +33,19 @@ export default function ScheduleListPage() {
   const { data: schedulesData, isLoading: loadingSchedules, refetch: refetchSchedules } = useFetchSchedules();
   const { data: dhowsData, isLoading: loadingDhows } = useFetchDhows();
 
-  const schedules = schedulesData?.results || [];
+  const rawSchedules = schedulesData?.results || [];
   const dhows = dhowsData?.results || [];
+
+  const schedules = React.useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const upcoming = rawSchedules.filter((s) => s.date >= todayStr);
+    const past = rawSchedules.filter((s) => s.date < todayStr);
+
+    upcoming.sort((a, b) => a.date.localeCompare(b.date));
+    past.sort((a, b) => b.date.localeCompare(a.date));
+
+    return [...upcoming, ...past];
+  }, [rawSchedules]);
 
   // Toggle layout states
   const viewMode = "list";

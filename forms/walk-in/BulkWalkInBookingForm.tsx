@@ -3,7 +3,23 @@
 import React, { useState, useEffect } from "react";
 import { createBookingBulk } from "@/services/bookings";
 import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
-import { Plus, Trash2, HelpCircle, DollarSign, ShoppingBag, ChevronDown, ChevronUp, Minus } from "lucide-react";
+import { 
+  Plus, 
+  Trash2, 
+  HelpCircle, 
+  DollarSign, 
+  ShoppingBag, 
+  ChevronDown, 
+  ChevronUp, 
+  Minus, 
+  User, 
+  Mail, 
+  Phone, 
+  Calendar, 
+  Tag, 
+  Sparkles, 
+  Ticket
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 interface BulkWalkInBookingFormProps {
@@ -70,7 +86,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
   };
 
   const [rows, setRows] = useState<BulkBookingRow[]>([{ ...defaultRow }]);
-  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(null);
+  const [expandedRowIndex, setExpandedRowIndex] = useState<number | null>(0); // First card expanded by default
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize first row schedule selection once schedules load
@@ -90,15 +106,22 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       ...rows,
       { ...defaultRow, scheduleId: nextScheduleId },
     ]);
+    setExpandedRowIndex(rows.length); // Automatically expand the newly created row, collapse previous
   };
 
-  const removeRow = (index: number) => {
+  const removeRow = (index: number, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent toggling accordion when clicking delete
     if (rows.length === 1) {
       toast.error("You must register at least one booking.");
       return;
     }
-    setRows(rows.filter((_, idx) => idx !== index));
-    if (expandedRowIndex === index) setExpandedRowIndex(null);
+    const filteredRows = rows.filter((_, idx) => idx !== index);
+    setRows(filteredRows);
+    if (expandedRowIndex === index) {
+      setExpandedRowIndex(Math.max(0, index - 1));
+    } else if (expandedRowIndex !== null && expandedRowIndex > index) {
+      setExpandedRowIndex(expandedRowIndex - 1);
+    }
   };
 
   const updateRow = <K extends keyof BulkBookingRow>(index: number, field: K, value: BulkBookingRow[K]) => {
@@ -180,26 +203,42 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     const children = parseInt(row.childCount, 10) || 0;
     
     const ticketSubtotal = (adults * effectiveAdultPrice) + (children * effectiveChildPrice);
-    const addonsSubtotal = row.selectedAddons.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    const addonsSubtotal = row.selectedAddons.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    
     const totalCalculated = ticketSubtotal + addonsSubtotal;
-
-    const discountValueParsed = parseFloat(row.discountValue) || 0;
-    const discount = row.discountType === "percentage"
-      ? ticketSubtotal * (discountValueParsed / 100)
-      : discountValueParsed;
-
+    
+    let discount = 0;
+    const discountVal = parseFloat(row.discountValue) || 0;
+    if (discountVal > 0) {
+      if (row.discountType === "percentage") {
+        discount = (totalCalculated * discountVal) / 100;
+      } else {
+        discount = discountVal;
+      }
+    }
+    
     const finalTotal = Math.max(0, totalCalculated - discount);
-    const depositVal = parseFloat(row.partialPaidAmount) || 0;
-    const depositAmount = row.isPartialPayment
-      ? (row.partialPaymentType === "percentage" ? finalTotal * (depositVal / 100) : depositVal)
-      : 0;
-    const paidAmount = row.paymentState === "unpaid" 
-      ? 0 
-      : row.isPartialPayment 
-        ? depositAmount 
-        : finalTotal;
+    
+    let paidAmount = finalTotal;
+    if (row.paymentState === "unpaid") {
+      paidAmount = 0;
+    } else if (row.isPartialPayment) {
+      const partialVal = parseFloat(row.partialPaidAmount) || 0;
+      if (row.partialPaymentType === "percentage") {
+        paidAmount = (finalTotal * partialVal) / 100;
+      } else {
+        paidAmount = partialVal;
+      }
+    }
+    
+    // Ensure paidAmount doesn't exceed finalTotal
+    paidAmount = Math.min(paidAmount, finalTotal);
     const unpaidBalance = Math.max(0, finalTotal - paidAmount);
-    return { ticketSubtotal, addonsSubtotal, totalCalculated, discount, finalTotal, paidAmount, unpaidBalance };
+    return { ticketSubtotal, addonsSubtotal, totalCalculated, discount, finalTotal, paidAmount, unpaidBalance, baseAdultPrice, baseChildPrice };
   };
 
   const summary = rows.reduce(
@@ -224,26 +263,26 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (!row.scheduleId) {
-        toast.error(`Please select a voyage for row ${i + 1}.`);
+        toast.error(`Please select a voyage for booking #${i + 1}.`);
         return;
       }
       if (!row.guestName.trim()) {
-        toast.error(`Please enter Guest Name for row ${i + 1}.`);
+        toast.error(`Please enter Guest Name for booking #${i + 1}.`);
         return;
       }
       const pricing = getRowPricing(row);
       if (pricing.discount > 0 && !row.discountReason.trim()) {
-        toast.error(`Please enter a discount reason for row ${i + 1}.`);
+        toast.error(`Please enter a discount reason for booking #${i + 1}.`);
         return;
       }
       if (row.paymentState !== "unpaid" && row.isPartialPayment) {
         const depositVal = parseFloat(row.partialPaidAmount) || 0;
         if (row.partialPaymentType === "percentage" && (depositVal <= 0 || depositVal > 100)) {
-          toast.error(`Row ${i + 1}: Deposit percentage must be between 1% and 100%.`);
+          toast.error(`Booking #${i + 1}: Deposit percentage must be between 1% and 100%.`);
           return;
         }
         if (row.partialPaymentType === "amount" && (depositVal <= 0 || depositVal > pricing.finalTotal)) {
-          toast.error(`Row ${i + 1}: Deposit amount must be greater than 0 and less than final total KES ${pricing.finalTotal.toLocaleString()}.`);
+          toast.error(`Booking #${i + 1}: Deposit amount must be greater than 0 and less than final total KES ${pricing.finalTotal.toLocaleString()}.`);
           return;
         }
       }
@@ -270,7 +309,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           custom_price_per_person: row.customAdultPrice ? parseFloat(row.customAdultPrice) : undefined,
           custom_price_per_child: row.customChildPrice ? parseFloat(row.customChildPrice) : undefined,
           discount_type: row.discountType,
-          discount_amount: pricing.discount, // Send computed flat discount amount for backwards compat if needed, but backend takes discount_value
+          discount_amount: pricing.discount,
           discount_value: parseFloat(row.discountValue) || 0,
           discount_reason: row.discountReason.trim() || undefined,
           payment_method: row.paymentState,
@@ -293,200 +332,335 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
     }
   };
 
+  const getPaymentBadge = (method: string) => {
+    switch (method) {
+      case "unpaid":
+        return "bg-amber-50 text-amber-800 border-amber-200";
+      case "waived":
+        return "bg-slate-100 text-slate-700 border-slate-300";
+      default:
+        return "bg-emerald-50 text-emerald-800 border-emerald-200";
+    }
+  };
+
+  const getPaymentLabel = (method: string) => {
+    switch (method) {
+      case "cash": return "Cash";
+      case "mpesa": return "M-Pesa";
+      case "visa": return "Visa";
+      case "mastercard": return "Mastercard";
+      case "staff_card": return "Staff Card";
+      case "agent_credit": return "Agent Credit";
+      case "waived": return "Waived";
+      case "unpaid": return "Unpaid";
+      default: return method;
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Scrollable table row wrapper */}
-      <div className="border border-slate-200 rounded-xl shadow-sm bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 min-w-[280px]">Voyage Selection</th>
-                <th className="px-4 py-3 min-w-[220px]">Primary Guest</th>
-                <th className="px-4 py-3 min-w-[160px]">Phone Number</th>
-                <th className="px-4 py-3 min-w-[120px]">Guests</th>
-                <th className="px-4 py-3 min-w-[130px]">Custom Pricing</th>
-                <th className="px-4 py-3 min-w-[220px]">Discount & Reason</th>
-                <th className="px-4 py-3 min-w-[200px]">Payment</th>
-                <th className="px-4 py-3 text-center min-w-[120px]">Add-Ons</th>
-                <th className="px-4 py-3 text-center w-12">Del</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((row, index) => {
-                const pricing = getRowPricing(row);
-                const hasAddons = row.selectedAddons.length > 0;
-                const isExpanded = expandedRowIndex === index;
+      {/* Accordion List */}
+      <div className="space-y-4">
+        {rows.map((row, index) => {
+          const isExpanded = expandedRowIndex === index;
+          const pricing = getRowPricing(row);
+          const nameDisplay = row.guestName.trim() || `Guest Booking #${index + 1}`;
+          
+          const sched = schedules.find((s) => s.id === row.scheduleId);
+          const voyageDisplay = sched 
+            ? `${sched.dhow_name} — ${sched.date} (${sched.meal_type_display})`
+            : "No voyage selected";
 
-                return (
-                  <React.Fragment key={index}>
-                    <tr className={`transition-colors ${isExpanded ? "bg-amber-50/30" : "hover:bg-slate-50/50"}`}>
-                      {/* Voyage Dropdown */}
-                      <td className="px-4 py-3 align-top">
+          const totalPax = (parseInt(row.adultCount, 10) || 1) + (parseInt(row.childCount, 10) || 0);
+
+          return (
+            <div 
+              key={index} 
+              className={`bg-white border rounded-2xl transition-all shadow-sm overflow-hidden ${
+                isExpanded ? "border-amber-400 ring-1 ring-amber-400/20" : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              {/* Accordion Header */}
+              <div 
+                onClick={() => setExpandedRowIndex(isExpanded ? null : index)}
+                className={`px-5 py-4 flex items-center justify-between cursor-pointer select-none bg-slate-50/50 hover:bg-slate-50 transition-colors border-b ${
+                  isExpanded ? "border-amber-100 bg-amber-50/10" : "border-slate-100"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={`p-2 rounded-xl flex-shrink-0 ${
+                    isExpanded ? "bg-amber-600 text-white" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    <Ticket className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900 text-sm truncate">{nameDisplay}</span>
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600">
+                        {totalPax} Pax
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getPaymentBadge(row.paymentState)}`}>
+                        {getPaymentLabel(row.paymentState)}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                      {voyageDisplay} • KES {pricing.finalTotal.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                  <button
+                    type="button"
+                    disabled={isSaving || rows.length === 1}
+                    onClick={(e) => removeRow(index, e)}
+                    className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                    title="Remove Booking"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div className="p-1 text-slate-400">
+                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  </div>
+                </div>
+              </div>
+
+              {/* Accordion Body */}
+              {isExpanded && (
+                <div className="p-6 sm:p-8 space-y-6 divide-y divide-slate-100 animate-fadeIn">
+                  {/* Grid layout containing fields */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column: Voyage details and Guest Contact */}
+                    <div className="space-y-6">
+                      {/* Sailing Selection */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
                         <select
-                          disabled={isSaving || loadingSchedules}
                           value={row.scheduleId}
+                          disabled={isSaving || loadingSchedules}
                           onChange={(e) => updateRow(index, "scheduleId", e.target.value)}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white font-semibold text-slate-800"
+                          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
                         >
                           {loadingSchedules ? (
-                            <option>Loading voyages...</option>
-                          ) : upcomingSchedules.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.dhow_name} — {s.date} ({s.meal_type_display})
-                            </option>
-                          ))}
+                            <option>Loading active voyages...</option>
+                          ) : upcomingSchedules.length === 0 ? (
+                            <option>No active voyages scheduled</option>
+                          ) : (
+                            upcomingSchedules.map((s) => (
+                              <option key={s.id} value={s.id}>
+                                {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
+                              </option>
+                            ))
+                          )}
                         </select>
-                      </td>
+                      </div>
 
-                      {/* Guest Name & Optional Email */}
-                      <td className="px-4 py-3 space-y-1 align-top">
-                        <input
-                          type="text"
-                          required
-                          disabled={isSaving}
-                          placeholder="John Doe"
-                          value={row.guestName}
-                          onChange={(e) => updateRow(index, "guestName", e.target.value)}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                        />
-                        <input
-                          type="email"
-                          disabled={isSaving}
-                          placeholder="Email (Optional)"
-                          value={row.guestEmail}
-                          onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
-                          className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 text-slate-500"
-                        />
-                      </td>
-
-                      {/* Phone Number */}
-                      <td className="px-4 py-3 align-top">
-                        <input
-                          type="tel"
-                          disabled={isSaving}
-                          placeholder="e.g. 0712345678"
-                          value={row.guestPhone}
-                          onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                        />
-                      </td>
-
-                      {/* Pax Count */}
-                      <td className="px-4 py-3 space-y-1 align-top">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">A</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="50"
-                            required
-                            disabled={isSaving}
-                            value={row.adultCount}
-                            onChange={(e) => updateRow(index, "adultCount", e.target.value)}
-                            className="w-full px-2 py-1 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                          />
+                      {/* Guest Details */}
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-slate-400" /> Guest Contact Details
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
+                            <input
+                              type="text"
+                              required
+                              disabled={isSaving}
+                              placeholder="e.g. John Doe"
+                              value={row.guestName}
+                              onChange={(e) => updateRow(index, "guestName", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Email (Optional)</label>
+                            <input
+                              type="email"
+                              disabled={isSaving}
+                              placeholder="guest@example.com"
+                              value={row.guestEmail}
+                              onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
+                            <input
+                              type="tel"
+                              disabled={isSaving}
+                              placeholder="e.g. 0712345678"
+                              value={row.guestPhone}
+                              onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">K</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="50"
-                            required
-                            disabled={isSaving}
-                            value={row.childCount}
-                            onChange={(e) => updateRow(index, "childCount", e.target.value)}
-                            className="w-full px-2 py-1 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                          />
-                        </div>
-                      </td>
+                      </div>
 
-                      {/* Custom Pricing */}
-                      <td className="px-4 py-3 space-y-1 align-top">
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">A</span>
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={isSaving}
-                            placeholder="Standard"
-                            value={row.customAdultPrice}
-                            onChange={(e) => updateRow(index, "customAdultPrice", e.target.value)}
-                            className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-amber-50/20 text-slate-700"
-                          />
+                      {/* Guest Custom Overrides */}
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <h4 className="font-bold text-slate-800 text-sm">Reservation & Pricing Customization</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Adults Count</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="50"
+                              disabled={isSaving}
+                              value={row.adultCount}
+                              onChange={(e) => updateRow(index, "adultCount", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Children Count (Kid Pricing)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="50"
+                              disabled={isSaving}
+                              value={row.childCount}
+                              onChange={(e) => updateRow(index, "childCount", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Adult (KES)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              disabled={isSaving}
+                              placeholder={`Standard: KES ${pricing.baseAdultPrice.toLocaleString()}`}
+                              value={row.customAdultPrice}
+                              onChange={(e) => updateRow(index, "customAdultPrice", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Kid (KES)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              disabled={isSaving}
+                              placeholder={`Standard: KES ${pricing.baseChildPrice.toLocaleString()}`}
+                              value={row.customChildPrice}
+                              onChange={(e) => updateRow(index, "customChildPrice", e.target.value)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-4 text-[10px] text-slate-400 font-bold uppercase">K</span>
-                          <input
-                            type="number"
-                            min="0"
-                            disabled={isSaving}
-                            placeholder="Standard"
-                            value={row.customChildPrice}
-                            onChange={(e) => updateRow(index, "customChildPrice", e.target.value)}
-                            className="w-full px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-amber-50/20 text-slate-700"
-                          />
-                        </div>
-                      </td>
+                      </div>
 
-                      {/* Discount Input & Reason */}
-                      <td className="px-4 py-3 space-y-1 align-top">
-                        <div className="flex gap-1">
+                      {/* Cancel Preferences & Seating */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Cancellation Preference</label>
                           <select
+                            value={row.cancellationPreference}
                             disabled={isSaving}
-                            value={row.discountType}
-                            onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
-                            className="w-16 px-1 py-1 border border-slate-200 rounded-md bg-slate-50 text-[10px] font-semibold text-slate-700"
+                            onChange={(e) => updateRow(index, "cancellationPreference", e.target.value as any)}
+                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                           >
-                            <option value="amount">KES</option>
-                            <option value="percentage">%</option>
+                            <option value="refund">Refund Money</option>
+                            <option value="reschedule">Reschedule Date</option>
                           </select>
-                          <input
-                            type="number"
-                            min="0"
-                            max={row.discountType === "percentage" ? 100 : undefined}
-                            disabled={isSaving}
-                            value={row.discountValue}
-                            onChange={(e) => updateRow(index, "discountValue", e.target.value)}
-                            className="flex-1 px-2 py-1 text-[10px] border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20"
-                          />
                         </div>
-                        {pricing.discount > 0 && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Seating Request (Optional)</label>
                           <input
                             type="text"
-                            required
                             disabled={isSaving}
-                            placeholder="Reason required"
-                            value={row.discountReason}
-                            onChange={(e) => updateRow(index, "discountReason", e.target.value)}
-                            className="w-full px-2 py-1 text-[10px] border border-rose-200 rounded-md focus:ring-1 focus:ring-rose-500/20 bg-rose-50/20 text-rose-800"
+                            placeholder="e.g. Deck seat, window table"
+                            value={row.tableRequest}
+                            onChange={(e) => updateRow(index, "tableRequest", e.target.value)}
+                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Payment, Discounts, Special Requests & Summary Math */}
+                    <div className="space-y-6">
+                      {/* Pricing math box */}
+                      <div className="bg-amber-50/55 border border-amber-200/50 rounded-2xl p-4.5 text-xs text-amber-900 font-semibold space-y-2">
+                        <div className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Pricing Math Summary</div>
+                        <div className="flex justify-between">
+                          <span>
+                            {row.adultCount} Adults x KES {pricing.ticketSubtotal.toLocaleString()}
+                          </span>
+                          <span>KES {pricing.ticketSubtotal.toLocaleString()}</span>
+                        </div>
+                        {row.selectedAddons.length > 0 && (
+                          <div className="space-y-1 pt-1 border-t border-amber-200/25">
+                            <span className="text-[9px] text-slate-500 uppercase font-bold block">Add-ons subtotal:</span>
+                            {row.selectedAddons.map((item) => (
+                              <div key={item.id} className="flex justify-between font-medium text-slate-700 font-semibold">
+                                <span>— {item.name} (x{item.quantity})</span>
+                                <span>KES {(item.price * item.quantity).toLocaleString()}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between font-bold text-slate-800 text-[10px] pt-1">
+                              <span>Add-ons Total</span>
+                              <span>KES {pricing.addonsSubtotal.toLocaleString()}</span>
+                            </div>
+                          </div>
                         )}
-                      </td>
+                        {pricing.discount > 0 && (
+                          <div className="flex justify-between text-rose-700 pt-1 border-t border-amber-200/25">
+                            <span>Discount ({row.discountType === "percentage" ? `${row.discountValue}%` : "Flat"})</span>
+                            <span>- KES {pricing.discount.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="text-sm font-bold text-slate-900 mt-1 pt-2 border-t border-amber-200/40 flex justify-between">
+                          <span>Final Total Cost:</span>
+                          <span>KES {pricing.finalTotal.toLocaleString()}</span>
+                        </div>
+                      </div>
 
-                      {/* Payment Settings */}
-                      <td className="px-4 py-3 space-y-1.5 align-top">
-                        <select
-                          disabled={isSaving}
-                          value={row.paymentState}
-                          onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
-                          className="w-full px-2 py-1.5 border border-slate-200 rounded-md focus:ring-1 focus:ring-amber-500/20 bg-white"
-                        >
-                          <option value="cash">Paid — Cash</option>
-                          <option value="mpesa">Paid — M-Pesa</option>
-                          <option value="visa">Paid — Visa</option>
-                          <option value="mastercard">Paid — Mastercard</option>
-                          <option value="staff_card">Staff Card</option>
-                          <option value="agent_credit">Agent Credit</option>
-                          <option value="waived">Waived</option>
-                          <option value="unpaid">Unpaid</option>
-                        </select>
+                      {/* Payment State */}
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <h4 className="font-bold text-slate-800 text-sm">Payment Settings</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Select Payment Method</label>
+                            <select
+                              value={row.paymentState}
+                              disabled={isSaving}
+                              onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
+                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+                            >
+                              <option value="cash">Paid — Cash</option>
+                              <option value="mpesa">Paid — M-Pesa</option>
+                              <option value="visa">Paid — Visa</option>
+                              <option value="mastercard">Paid — Mastercard</option>
+                              <option value="staff_card">Staff Card</option>
+                              <option value="agent_credit">Agent Credit</option>
+                              <option value="waived">Waived</option>
+                              <option value="unpaid">Unpaid</option>
+                            </select>
+                          </div>
 
+                          {row.paymentState !== "unpaid" && (
+                            <div>
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Transaction Ref / Code</label>
+                              <input
+                                type="text"
+                                disabled={isSaving}
+                                placeholder="e.g. QX12345678"
+                                value={row.transactionRef}
+                                onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
+                                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 uppercase font-semibold text-slate-800"
+                              />
+                            </div>
+                          )}
+                        </div>
 
+                        {/* Partial Payment */}
                         {row.paymentState !== "unpaid" && (
-                          <div className="flex flex-col gap-1 p-1 bg-slate-50 border border-slate-200/80 rounded-md text-[10px]">
-                            <label className="flex items-center gap-1 cursor-pointer select-none font-medium">
+                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer select-none font-bold text-slate-700">
                               <input
                                 type="checkbox"
                                 disabled={isSaving}
@@ -497,14 +671,15 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                                     updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
                                   }
                                 }}
-                                className="rounded text-amber-600 focus:ring-amber-500 w-3 h-3"
+                                className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
                               />
-                              Deposit
+                              This is a partial payment (Guest will pay a deposit)
                             </label>
 
                             {row.isPartialPayment && (
-                              <div className="mt-1 space-y-1">
-                                <div className="flex gap-1">
+                              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
+                                <div>
+                                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Type</label>
                                   <select
                                     disabled={isSaving}
                                     value={row.partialPaymentType}
@@ -516,211 +691,213 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                                         updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
                                       }
                                     }}
-                                    className="px-1 py-0.5 border border-slate-200 rounded text-[9px] font-semibold bg-white"
+                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs bg-white font-semibold text-slate-800"
                                   >
-                                    <option value="amount">KES</option>
-                                    <option value="percentage">%</option>
+                                    <option value="amount">Amount (KES)</option>
+                                    <option value="percentage">Percentage (%)</option>
                                   </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Value</label>
                                   <input
                                     type="number"
                                     min="1"
                                     max={row.partialPaymentType === "percentage" ? 100 : pricing.finalTotal}
-                                    required
                                     disabled={isSaving}
                                     value={row.partialPaidAmount}
                                     onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
-                                    className="flex-1 px-1 py-0.5 border border-slate-200 rounded text-[10px] w-12"
+                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs font-semibold text-slate-800"
                                   />
                                 </div>
-                                {row.partialPaymentType === "percentage" && (
-                                  <div className="text-[8px] text-slate-500 font-semibold truncate">
-                                    Dep: KES {pricing.paidAmount.toLocaleString()}
-                                  </div>
-                                )}
-                                <div className="text-[8px] text-amber-700 font-medium truncate">
-                                  Bal: KES {pricing.unpaidBalance.toLocaleString()}
+                                <div className="col-span-2 text-[10px] text-amber-800 font-bold bg-amber-50/50 p-2 rounded-lg border border-amber-200/30 flex justify-between">
+                                  <span>Deposit Paid: KES {pricing.paidAmount.toLocaleString()}</span>
+                                  <span>Unpaid Balance: KES {pricing.unpaidBalance.toLocaleString()}</span>
                                 </div>
                               </div>
                             )}
                           </div>
                         )}
-                      </td>
+                      </div>
 
-                      {/* Addons Toggler */}
-                      <td className="px-4 py-3 text-center align-top">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedRowIndex(isExpanded ? null : index)}
-                          className={`flex items-center gap-1 mx-auto px-2 py-1.5 rounded border text-[10px] font-bold transition-colors ${
-                            hasAddons ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"
-                          }`}
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          {row.selectedAddons.reduce((acc, curr) => acc + curr.quantity, 0) || "Add"}
-                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
-                      </td>
+                      {/* Discounts */}
+                      <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1"><Tag className="w-4 h-4 text-slate-400" /> Discounts</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Discount Option</label>
+                            <div className="flex gap-1.5">
+                              <select
+                                value={row.discountType}
+                                disabled={isSaving}
+                                onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
+                                className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white font-semibold text-slate-800"
+                              >
+                                <option value="amount">Flat KES</option>
+                                <option value="percentage">Percentage (%)</option>
+                              </select>
+                              <input
+                                type="number"
+                                min="0"
+                                max={row.discountType === "percentage" ? 100 : undefined}
+                                disabled={isSaving}
+                                value={row.discountValue}
+                                onChange={(e) => updateRow(index, "discountValue", e.target.value)}
+                                className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm font-semibold"
+                              />
+                            </div>
+                          </div>
 
-                      {/* Delete button */}
-                      <td className="px-4 py-3 text-center align-top">
-                        <button
-                          type="button"
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">
+                              Discount Reason {pricing.discount > 0 && <span className="text-rose-600 font-bold">*</span>}
+                            </label>
+                            <input
+                              type="text"
+                              disabled={isSaving}
+                              placeholder="e.g. Manager approval, group discount"
+                              value={row.discountReason}
+                              onChange={(e) => updateRow(index, "discountReason", e.target.value)}
+                              className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 ${
+                                pricing.discount > 0 && !row.discountReason.trim()
+                                  ? "border-rose-300 focus:ring-rose-500/20 bg-rose-50/10"
+                                  : "border-slate-200 focus:ring-amber-500/20"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Special Requests */}
+                      <div className="pt-4 border-t border-slate-100 space-y-1">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Special Dietary / Voyage Requests (Optional)</label>
+                        <textarea
                           disabled={isSaving}
-                          onClick={() => removeRow(index)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                    
-                    {/* EXPANDED ROW FOR ADDONS AND SPECIAL REQUESTS */}
-                    {isExpanded && (
-                      <tr className="bg-amber-50/20">
-                        <td colSpan={9} className="px-4 py-4 border-t border-slate-200/50">
-                          <div className="flex flex-col sm:flex-row gap-6 max-w-5xl">
-                            {/* Special Requests & Transaction Ref */}
-                            <div className="flex-1 space-y-3">
-                              <div className="space-y-1">
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase">Special Dietary / Voyage Requests</label>
-                                <textarea
-                                  disabled={isSaving}
-                                  placeholder="e.g. Vegetarian diet, birthday setup..."
-                                  value={row.specialRequests}
-                                  onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
-                                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 h-16 bg-white"
-                                />
+                          placeholder="e.g. Vegetarian diet, birthday celebration setup..."
+                          value={row.specialRequests}
+                          onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-amber-500/20 h-16 bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add-ons Grid */}
+                  <div className="space-y-4 pt-6">
+                    <div className="flex items-center gap-2">
+                      <ShoppingBag className="w-5 h-5 text-amber-600" />
+                      <h4 className="font-bold text-slate-800 text-sm">Custom Add-Ons (Cakes & Extras)</h4>
+                    </div>
+
+                    {addonsList.length === 0 ? (
+                      <div className="text-xs text-slate-400 italic">No available addons registered in vessel management.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                        {addonsList.map((addon) => {
+                          const item = row.selectedAddons.find((a) => a.id === addon.id);
+                          const qty = item?.quantity || 0;
+
+                          return (
+                            <div 
+                              key={addon.id} 
+                              className={`p-3 border rounded-xl flex flex-col justify-between transition-all ${
+                                qty > 0 ? "border-amber-400 bg-amber-50/10" : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between w-full gap-2">
+                                <div className="truncate">
+                                  <div className="text-[11px] font-bold text-slate-800 truncate">{addon.name}</div>
+                                  <div className="text-[9px] text-slate-500 font-semibold">
+                                    Std: KES {parseFloat(addon.price.toString()).toLocaleString()}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  {qty > 0 ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveAddon(index, addon.id)}
+                                        className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
+                                      >
+                                        <Minus className="w-3 h-3" />
+                                      </button>
+                                      <span className="text-[11px] font-extrabold text-slate-800 w-3 text-center">{qty}</span>
+                                    </>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddAddon(index, addon)}
+                                    className="p-1 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 flex items-center justify-center"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
 
-                              {row.paymentState !== "unpaid" && (
-                                <div className="space-y-1">
-                                  <label className="block text-[10px] font-bold text-slate-500 uppercase">
-                                    {row.paymentState === "mpesa" ? "M-Pesa Transaction Reference Code" : "Transaction Reference / Code"}
-                                  </label>
+                              {qty > 0 && item && (
+                                <div className="mt-2.5 pt-2 border-t border-slate-100/80 flex items-center justify-between gap-2">
+                                  <span className="text-[9px] text-slate-400 font-bold uppercase whitespace-nowrap">Price KES:</span>
                                   <input
-                                    type="text"
-                                    disabled={isSaving}
-                                    placeholder={row.paymentState === "mpesa" ? "e.g. QX12345678" : "e.g. Check No, bank ref"}
-                                    value={row.transactionRef}
-                                    onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500/20 bg-white uppercase font-semibold text-slate-800"
+                                    type="number"
+                                    min="0"
+                                    value={item.price}
+                                    onChange={(e) => handleUpdateAddonPrice(index, addon.id, e.target.value)}
+                                    className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 bg-white"
                                   />
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Addons Configurator */}
-                            <div className="flex-[2] space-y-2">
-                              <label className="block text-[10px] font-bold text-slate-500 uppercase">Optional Booking Add-ons</label>
-                              {addonsList.length === 0 ? (
-                                <div className="text-xs text-slate-400 italic py-2">No available addons registered in vessel management.</div>
-                              ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                  {addonsList.map((addon) => {
-                                    const qty = row.selectedAddons.find(a => a.id === addon.id)?.quantity || 0;
-                                    const selectedAddon = row.selectedAddons.find(a => a.id === addon.id);
-                                    return (
-                                      <div key={addon.id} className={`p-2.5 border rounded-lg flex flex-col justify-between bg-white shadow-sm transition-all ${
-                                        qty > 0 ? "border-amber-400 bg-amber-50/5" : "border-slate-200"
-                                      }`}>
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="truncate">
-                                            <div className="text-[11px] font-bold text-slate-800 truncate">{addon.name}</div>
-                                            <div className="text-[9px] text-slate-500 font-medium">Std: KES {parseFloat(addon.price.toString()).toLocaleString()}</div>
-                                          </div>
-                                          <div className="flex items-center gap-1.5 flex-shrink-0">
-                                            {qty > 0 ? (
-                                              <>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleRemoveAddon(index, addon.id)}
-                                                  className="p-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600"
-                                                >
-                                                  <Minus className="w-3 h-3" />
-                                                </button>
-                                                <span className="text-[11px] font-extrabold text-slate-800 w-3 text-center">{qty}</span>
-                                              </>
-                                            ) : null}
-                                            <button
-                                              type="button"
-                                              onClick={() => handleAddAddon(index, addon)}
-                                              className="p-1 rounded bg-slate-100 hover:bg-amber-100 hover:text-amber-800 text-slate-600 flex items-center justify-center"
-                                            >
-                                              <Plus className="w-3 h-3" />
-                                            </button>
-                                          </div>
-                                        </div>
-
-                                        {qty > 0 && selectedAddon && (
-                                          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
-                                            <span className="text-[9px] text-slate-400 font-bold uppercase whitespace-nowrap">Price:</span>
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              value={selectedAddon.price}
-                                              onChange={(e) => handleUpdateAddonPrice(index, addon.id, e.target.value)}
-                                              className="w-full px-1.5 py-0.5 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 bg-white"
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
+                          );
+                        })}
+                      </div>
                     )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
-        {/* Form Controls */}
-        <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-between">
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={addRow}
-            className="flex items-center gap-1 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
-          >
-            <Plus className="w-3.5 h-3.5 text-slate-500" /> Add Booking Row
-          </button>
-          <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
-            <HelpCircle className="w-3.5 h-3.5" /> Spreadsheet style bulk entry form
-          </span>
-        </div>
+      {/* Form Controls - Add Row */}
+      <div className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <button
+          type="button"
+          disabled={isSaving}
+          onClick={addRow}
+          className="flex items-center gap-2 text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
+        >
+          <Plus className="w-4 h-4 text-slate-500" /> Add Booking Card
+        </button>
+        <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
+          <HelpCircle className="w-3.5 h-3.5" /> Accordion style guest manifest setup
+        </span>
       </div>
 
       {/* Aggregate Group Summary Panel */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 shadow-inner space-y-3.5">
-        <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1.5">
-          <DollarSign className="w-4 h-4 text-slate-400" /> Real-time Batch Financial Summary
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-white space-y-4 shadow-lg">
+        <div className="text-xs text-amber-500 uppercase font-extrabold tracking-wider flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> Real-time Batch Financial Summary
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Bookings</span>
-            <span className="text-lg font-bold text-slate-800">{rows.length} Rows</span>
+            <span className="text-lg font-black text-white">{rows.length} Cards</span>
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Headcount</span>
-            <span className="text-lg font-bold text-slate-800">{summary.totalPax} Pax</span>
+            <span className="text-lg font-black text-white">{summary.totalPax} Pax</span>
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Discounts Allowed</span>
-            <span className="text-lg font-bold text-rose-700">KES {summary.totalDiscounts.toLocaleString()}</span>
+            <span className="text-lg font-black text-rose-400">KES {summary.totalDiscounts.toLocaleString()}</span>
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Cash Paid Today</span>
-            <span className="text-lg font-bold text-emerald-700">KES {summary.totalPaid.toLocaleString()}</span>
+            <span className="text-lg font-black text-emerald-400">KES {summary.totalPaid.toLocaleString()}</span>
           </div>
           <div className="space-y-0.5">
             <span className="text-[10px] text-slate-400 font-bold uppercase block">Outstanding Balance</span>
-            <span className="text-lg font-bold text-amber-700">KES {summary.totalReceivable.toLocaleString()}</span>
+            <span className="text-lg font-black text-amber-400">KES {summary.totalReceivable.toLocaleString()}</span>
           </div>
         </div>
       </div>
@@ -729,7 +906,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
       <button
         type="submit"
         disabled={isSaving}
-        className="w-full py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/60 text-white font-bold text-base rounded-xl transition-all shadow-md shadow-amber-600/10 flex items-center justify-center gap-2 disabled:cursor-not-allowed"
+        className="w-full py-3.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/60 text-white font-bold text-base rounded-xl transition-all shadow-md shadow-amber-600/10 flex items-center justify-center gap-2 disabled:cursor-not-allowed"
       >
         {isSaving ? (
           <>

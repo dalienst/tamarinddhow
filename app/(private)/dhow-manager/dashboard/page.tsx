@@ -61,10 +61,17 @@ export default function DhowManagerDashboard() {
       )
   }
 
+  const todayStr = new Date().toISOString().split("T")[0];
+
   const users = (accountsData?.results || []).slice(0, 5)
-  const schedules = (schedulesData?.results || []).slice(0, 5)
+  const schedules = (schedulesData?.results || [])
+    .filter((s) => s.date >= todayStr && s.status !== "completed" && s.status !== "cancelled")
+    .slice(0, 5)
   const dhows = (dhowsData?.results || []).slice(0, 5)
-  const bookings = (bookingsData?.results || []).slice(0, 5)
+  const bookings = (bookingsData?.results || [])
+    .filter((b) => b.status !== "cancelled" && b.status !== "no_show" && (b.schedule_date ? b.schedule_date >= todayStr : true))
+    .slice(0, 5)
+
 
   const closeModal = () => {
       setActiveModal(null)

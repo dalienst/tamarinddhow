@@ -61,9 +61,9 @@ export default function HelpGuidePage() {
       description: "Populate the active calendar grid with voyage instances so guests can book spaces.",
       details: [
         "Go to the **Schedules** page on the sidebar.",
-        "Click 'Plan Voyage' or click a day on the monthly grid to open the creation modal.",
-        "Select the Dhow Vessel and sailing date (timings and pricing will default from your templates but can be tweaked ad-hoc).",
-        "Submit the form to schedule the voyage. The schedule will show as a colored pill on the calendar grid."
+        "Click **Plan Voyage** to schedule an individual voyage, or select **Bulk Initialize** to navigate to the bulk calendar generation page.",
+        "On the Bulk Initialize page, specify your start and end date range (e.g. next 30 days) and select the templates you wish to instantiate.",
+        "Verify your selection in the live summary preview and submit. The system will batch-create all matching voyages while automatically skipping dates with existing sailing slots to prevent double-bookings."
       ],
       link: "/dhow-manager/schedules"
     },

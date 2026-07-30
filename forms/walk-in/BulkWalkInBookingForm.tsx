@@ -26,7 +26,7 @@ interface BulkBookingRow {
   discountType: "amount" | "percentage";
   discountValue: string;
   discountReason: string;
-  paymentState: "unpaid" | "cash" | "mpesa" | "agent_credit" | "waived";
+  paymentState: "unpaid" | "cash" | "mpesa" | "agent_credit" | "waived" | "staff_card" | "mastercard" | "visa";
   transactionRef: string;
   isPartialPayment: boolean;
   partialPaymentType: "amount" | "percentage";
@@ -475,10 +475,14 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                         >
                           <option value="cash">Paid — Cash</option>
                           <option value="mpesa">Paid — M-Pesa</option>
+                          <option value="visa">Paid — Visa</option>
+                          <option value="mastercard">Paid — Mastercard</option>
+                          <option value="staff_card">Staff Card</option>
                           <option value="agent_credit">Agent Credit</option>
                           <option value="waived">Waived</option>
                           <option value="unpaid">Unpaid</option>
                         </select>
+
 
                         {row.paymentState !== "unpaid" && (
                           <div className="flex flex-col gap-1 p-1 bg-slate-50 border border-slate-200/80 rounded-md text-[10px]">

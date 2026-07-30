@@ -1,4 +1,4 @@
-export type PaymentMethod = "mpesa" | "cash" | "agent_credit" | "waived";
+export type PaymentMethod = "mpesa" | "cash" | "agent_credit" | "waived" | "staff_card" | "mastercard" | "visa";
 
 export type PaymentStatus = "pending" | "processing" | "completed" | "failed";
 

@@ -3,7 +3,8 @@
 import React, { useState, useMemo } from "react";
 import { useFetchBookings } from "@/hooks/bookings/actions";
 import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
-import { FileSpreadsheet, TrendingUp, BarChart3, ShieldAlert, Download, DollarSign, Users, Calendar, Filter } from "lucide-react";
+import { useFetchPayments } from "@/hooks/payments/actions";
+import { FileSpreadsheet, TrendingUp, BarChart3, ShieldAlert, Download, DollarSign, Users, Calendar, Filter, CreditCard, Coins, Receipt } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ManagerReportsPage() {
@@ -17,6 +18,7 @@ export default function ManagerReportsPage() {
   const { data: dhowsData } = useFetchDhows();
   const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules();
   const { data: bookingsData, isLoading: loadingBookings } = useFetchBookings();
+  const { data: paymentsData } = useFetchPayments({ page_size: 1000 });
 
   const dhows = dhowsData?.results || [];
   const schedules = schedulesData?.results || [];
@@ -44,6 +46,14 @@ export default function ManagerReportsPage() {
       return true;
     });
   }, [bookings, schedules, startDate, endDate, selectedDhow, selectedStatus]);
+
+  const filteredPayments = useMemo(() => {
+    const bookingIds = new Set(filteredBookings.map((b) => b.id));
+    return (paymentsData?.results || []).filter(
+      (p) => bookingIds.has(p.booking) && p.status === "completed"
+    );
+  }, [paymentsData, filteredBookings]);
+
 
   const filteredSchedules = useMemo(() => {
     return schedules.filter((s) => {
@@ -98,6 +108,35 @@ export default function ManagerReportsPage() {
     const cancelledCount = filteredBookings.filter((b) => b.status === "cancelled").length;
     const refundRate = totalBookings > 0 ? (cancelledCount / totalBookings) * 100 : 0;
 
+    // 5. Payment method breakdowns
+    const mpesaTotal = filteredPayments
+      .filter((p) => p.payment_method === "mpesa")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const cashTotal = filteredPayments
+      .filter((p) => p.payment_method === "cash")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const visaTotal = filteredPayments
+      .filter((p) => p.payment_method === "visa")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const mastercardTotal = filteredPayments
+      .filter((p) => p.payment_method === "mastercard")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const staffCardTotal = filteredPayments
+      .filter((p) => p.payment_method === "staff_card")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const agentCreditTotal = filteredPayments
+      .filter((p) => p.payment_method === "agent_credit")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
+    const waivedTotal = filteredPayments
+      .filter((p) => p.payment_method === "waived")
+      .reduce((sum, p) => sum + parseFloat((p.amount || 0).toString()), 0);
+
     return {
       grossRevenue,
       cashCollected,
@@ -107,8 +146,16 @@ export default function ManagerReportsPage() {
       quotaFulfillment,
       refundRate,
       totalBookings,
+      mpesaTotal,
+      cashTotal,
+      visaTotal,
+      mastercardTotal,
+      staffCardTotal,
+      agentCreditTotal,
+      waivedTotal,
     };
-  }, [filteredBookings, filteredSchedules, dhows]);
+  }, [filteredBookings, filteredSchedules, dhows, filteredPayments]);
+
 
   // CSV Exporter
   const handleExportCSV = () => {
@@ -315,6 +362,47 @@ export default function ManagerReportsPage() {
           <span className="text-xs text-rose-500 font-medium">Total discounts applied to voyages</span>
         </div>
       </div>
+      {/* COLLECTIONS BREAKDOWN SECTION */}
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-slate-800 text-sm font-bold uppercase tracking-wider border-b border-slate-100 pb-3 gap-2">
+          <span className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-600" /> Cash Collected Breakdown by Payment Method
+          </span>
+          <span className="text-xs text-emerald-700 font-extrabold font-mono bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
+            Total realized: KES {stats.cashCollected.toLocaleString()}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4 text-xs pt-1">
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">M-Pesa</span>
+            <span className="text-base font-black text-slate-800">KES {stats.mpesaTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Cash</span>
+            <span className="text-base font-black text-slate-800">KES {stats.cashTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Visa</span>
+            <span className="text-base font-black text-slate-800">KES {stats.visaTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Mastercard</span>
+            <span className="text-base font-black text-slate-800">KES {stats.mastercardTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-amber-50/50 border border-amber-200/65 rounded-2xl">
+            <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider">Staff Card</span>
+            <span className="text-base font-black text-amber-900">KES {stats.staffCardTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Agent Credit</span>
+            <span className="text-base font-black text-slate-800">KES {stats.agentCreditTotal.toLocaleString()}</span>
+          </div>
+          <div className="space-y-1 p-3 bg-slate-50 border border-slate-150 rounded-2xl">
+            <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider">Waived</span>
+            <span className="text-base font-black text-slate-800">KES {stats.waivedTotal.toLocaleString()}</span>
+          </div>
+        </div>
+      </div>
 
       {/* OPERATIONAL RATIOS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -329,16 +417,6 @@ export default function ManagerReportsPage() {
           <span className="text-xs text-slate-500 font-medium">Capacity filled across selected period</span>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">
-            <span>Avg Occupancy Rate</span>
-            <BarChart3 className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-3xl font-extrabold text-slate-900">
-            {stats.avgOccupancy.toFixed(1)}%
-          </div>
-          <span className="text-xs text-slate-500 font-medium">Capacity filled across selected period</span>
-        </div>
 
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-2">
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase tracking-wider">

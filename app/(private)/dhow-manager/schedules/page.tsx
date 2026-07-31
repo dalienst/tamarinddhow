@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Schedule, Dhow, MealType } from "@/types/dhow";
-import { openSchedule, closeSchedule, confirmSchedule, cancelSchedule, createSchedule } from "@/services/vessels";
+import { openSchedule, closeSchedule, confirmSchedule, cancelSchedule, createSchedule, updateSchedule } from "@/services/vessels";
 import { useFetchSchedules, useFetchDhows } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/common/Skeleton";
@@ -26,7 +26,8 @@ import {
   Info,
   Clock,
   AlertTriangle,
-  Loader2
+  Loader2,
+  Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -63,6 +64,18 @@ export default function ScheduleCenterPage() {
     ref: string;
   }>({ isOpen: false, ref: "" });
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
+
+  // Edit Schedule form state
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [editDhow, setEditDhow] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editMealType, setEditMealType] = useState<MealType>("sunset_cruise");
+  const [editDepartureTime, setEditDepartureTime] = useState("");
+  const [editReturnTime, setEditReturnTime] = useState("");
+  const [editPricePerPerson, setEditPricePerPerson] = useState("");
+  const [editPricePerChild, setEditPricePerChild] = useState("");
+  const [editExclusiveFlatFee, setEditExclusiveFlatFee] = useState("");
+  const [editNotes, setEditNotes] = useState("");
 
   useEffect(() => {
     if (dhows.length > 0 && !selectedDhow) {
@@ -121,6 +134,36 @@ export default function ScheduleCenterPage() {
       refetchSchedules();
     } catch (err) {
       toast.error("Failed to create schedule.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSchedule) return;
+    setIsSaving(true);
+    try {
+      await updateSchedule(
+        editingSchedule.reference,
+        {
+          dhow: editDhow,
+          date: editDate,
+          meal_type: editMealType,
+          departure_time: editDepartureTime,
+          return_time: editReturnTime,
+          price_per_person: parseFloat(editPricePerPerson),
+          price_per_child: parseFloat(editPricePerChild),
+          exclusive_flat_fee: parseFloat(editExclusiveFlatFee),
+          notes: editNotes,
+        },
+        token
+      );
+      toast.success("Voyage details updated successfully!");
+      setEditingSchedule(null);
+      refetchSchedules();
+    } catch (err) {
+      toast.error("Failed to update schedule details.");
     } finally {
       setIsSaving(false);
     }
@@ -367,13 +410,17 @@ export default function ScheduleCenterPage() {
                 <span className="font-bold text-slate-700 text-sm">Scheduled Trips</span>
                 <button
                   onClick={() => {
-                    setDate(selectedDate.toISOString().split("T")[0]);
+                    const y = selectedDate.getFullYear();
+                    const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                    const d = String(selectedDate.getDate()).padStart(2, "0");
+                    setDate(`${y}-${m}-${d}`);
                     setIsCreateModalOpen(true);
                   }}
                   className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" /> Plan Voyage
                 </button>
+
               </div>
 
               {selectedDaySchedules.length === 0 ? (
@@ -415,6 +462,23 @@ export default function ScheduleCenterPage() {
                         >
                           <Table className="w-3.5 h-3.5" /> Seating
                         </Link>
+                        <button
+                          onClick={() => {
+                            setEditingSchedule(s);
+                            setEditDhow(s.dhow);
+                            setEditDate(s.date);
+                            setEditMealType(s.meal_type);
+                            setEditDepartureTime(s.departure_time.substring(0, 5));
+                            setEditReturnTime(s.return_time.substring(0, 5));
+                            setEditPricePerPerson(String(s.price_per_person));
+                            setEditPricePerChild(String(s.price_per_child));
+                            setEditExclusiveFlatFee(String(s.exclusive_flat_fee));
+                            setEditNotes(s.notes || "");
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-white text-slate-800 hover:bg-slate-50 font-bold text-xs rounded-lg border border-slate-200 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Edit details
+                        </button>
 
                         {s.is_open ? (
                           <button
@@ -640,7 +704,168 @@ export default function ScheduleCenterPage() {
             </form>
           </div>
         </div>
+      {/* Edit Sailing Schedule Modal */}
+      {editingSchedule && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden animate-scaleIn">
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white">
+              <h3 className="font-extrabold tracking-tight flex items-center gap-2">
+                <CalendarIcon className="w-5 h-5 text-amber-500" /> Edit Sailing Voyage
+              </h3>
+              <button
+                onClick={() => setEditingSchedule(null)}
+                className="text-slate-300 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSchedule} className="p-6 space-y-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Dhow Vessel</label>
+                <select
+                  value={editDhow}
+                  disabled={isSaving}
+                  onChange={(e) => setEditDhow(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                >
+                  {dhows.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Sailing Date</label>
+                  <input
+                    type="date"
+                    required
+                    disabled={isSaving}
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Meal Type</label>
+                  <select
+                    value={editMealType}
+                    disabled={isSaving}
+                    onChange={(e) => setEditMealType(e.target.value as any)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  >
+                    <option value="lunch">Lunch</option>
+                    <option value="sunset_cruise">Sunset Cruise</option>
+                    <option value="booze_cruise">Booze Cruise</option>
+                    <option value="special_cruise">Special Cruise</option>
+                    <option value="dinner_cruise">Dinner Cruise</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Departure Time</label>
+                  <input
+                    type="time"
+                    required
+                    disabled={isSaving}
+                    value={editDepartureTime}
+                    onChange={(e) => setEditDepartureTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Return Time</label>
+                  <input
+                    type="time"
+                    required
+                    disabled={isSaving}
+                    value={editReturnTime}
+                    onChange={(e) => setEditReturnTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Price per Adult (KES)</label>
+                  <input
+                    type="number"
+                    required
+                    disabled={isSaving}
+                    value={editPricePerPerson}
+                    onChange={(e) => setEditPricePerPerson(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-bold text-slate-600 uppercase">Price per Child (KES)</label>
+                  <input
+                    type="number"
+                    required
+                    disabled={isSaving}
+                    value={editPricePerChild}
+                    onChange={(e) => setEditPricePerChild(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Exclusive Flat Fee (KES)</label>
+                <input
+                  type="number"
+                  required
+                  disabled={isSaving}
+                  value={editExclusiveFlatFee}
+                  onChange={(e) => setEditExclusiveFlatFee(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase">Voyage Details & Notes</label>
+                <textarea
+                  placeholder="Boarding info, crew assignments, customized menus, special guests, weather warnings, or sailing details..."
+                  value={editNotes}
+                  disabled={isSaving}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 h-24 disabled:opacity-60"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setEditingSchedule(null)}
+                  disabled={isSaving}
+                  className="px-5 py-2.5 text-sm font-semibold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all border border-slate-200 disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/60 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-amber-600/10 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+                      Saving Voyage...
+                    </>
+                  ) : (
+                    "Save Voyage Details"
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
+
 
       <ConfirmationModal
         isOpen={cancelModalState.isOpen}

@@ -194,29 +194,29 @@ export default function ManifestPage() {
       )}
 
       {/* Top Breadcrumb Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start md:items-center gap-3">
           <Link
             href="/dhow-manager/schedules"
-            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Daily Sailing Manifest & Check-In</h1>
+          <div className="break-words min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">Daily Sailing Manifest & Check-In</h1>
             {schedule && (
-              <p className="text-sm text-slate-500 font-medium">
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 truncate">
                 {schedule.dhow_name} | {schedule.date} ({schedule.meal_type_display}) | {schedule.departure_time.substring(0,5)} - {schedule.return_time.substring(0,5)}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2 shrink-0 w-full md:w-auto mt-2 md:mt-0">
           {schedule && (
             <button
               onClick={handleOpenShareModal}
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm w-full sm:w-auto"
             >
               <Share2 className="w-4 h-4 text-slate-500" />
               Share Public Manifest
@@ -227,17 +227,17 @@ export default function ManifestPage() {
             <button
               onClick={handleCloseChecklist}
               disabled={isClosingChecklist}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-800/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-800/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed w-full sm:w-auto"
             >
               {isClosingChecklist ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
-                  Closing Checklist...
+                  Closing...
                 </>
               ) : (
                 <>
                   <Anchor className="w-4 h-4" />
-                  Mark Dhow as Sailed (Close Checklist)
+                  Sail Dhow
                 </>
               )}
             </button>
@@ -247,7 +247,7 @@ export default function ManifestPage() {
             <button
               onClick={() => setIsReopenConfirmOpen(true)}
               disabled={isReopeningChecklist}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-700/80 text-white font-bold text-sm rounded-xl transition-all shadow-sm disabled:cursor-not-allowed w-full sm:w-auto"
             >
               {isReopeningChecklist ? (
                 <>
@@ -257,7 +257,7 @@ export default function ManifestPage() {
               ) : (
                 <>
                   <Check className="w-4 h-4" />
-                  Reopen Sailing Checklist
+                  Reopen Checklist
                 </>
               )}
             </button>

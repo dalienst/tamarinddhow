@@ -190,7 +190,14 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                     <div className="text-[10px] text-slate-400 font-mono">{b.reference}</div>
                     {b.booked_by_email && <div className="text-[10px] text-slate-500">{b.booked_by_email}</div>}
                   </div>
-                  <StatusBadge status={b.status} type="booking" />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <StatusBadge status={b.status} type="booking" />
+                    {Number(b.outstanding_balance) > 0 && (
+                      <span className="text-[9px] bg-rose-100 border border-rose-200 text-rose-800 font-extrabold px-1.5 py-0.5 rounded shadow-sm">
+                        BAL: KES {Number(b.outstanding_balance).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Seats + package */}
@@ -514,7 +521,14 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                         {b.special_requests || "None"}
                       </td>
                       <td className="px-6 py-4">
-                        <StatusBadge status={b.status} type="booking" />
+                        <div className="flex flex-col items-start gap-1.5">
+                          <StatusBadge status={b.status} type="booking" />
+                          {Number(b.outstanding_balance) > 0 && (
+                            <span className="text-[10px] bg-rose-100 border border-rose-200 text-rose-800 font-extrabold px-2 py-0.5 rounded shadow-sm inline-flex">
+                              Balance: KES {Number(b.outstanding_balance).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 print:hidden">
                         <div className="flex items-center gap-1.5">

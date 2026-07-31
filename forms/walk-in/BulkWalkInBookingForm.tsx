@@ -302,7 +302,7 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
           cancellation_preference: row.cancellationPreference,
           table_request: row.tableRequest.trim() || undefined,
           special_requests: row.specialRequests.trim() || undefined,
-          status: row.paymentState === "unpaid" ? "pending" : "confirmed",
+          status: (row.paymentState === "unpaid" || row.isPartialPayment) ? "pending" : "confirmed",
           primary_guest_name: row.guestName.trim(),
           primary_guest_email: row.guestEmail.trim() || undefined,
           primary_guest_phone: row.guestPhone.trim() || undefined,

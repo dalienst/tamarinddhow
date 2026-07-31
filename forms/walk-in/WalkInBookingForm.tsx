@@ -290,8 +290,9 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
             );
           }
 
-          if (booking.status === "pending") {
-            await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: "confirmed" }, {
+          const targetStatus = isPartialPayment ? "pending" : "confirmed";
+          if (booking.status !== targetStatus) {
+            await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: targetStatus }, {
               headers: { Authorization: `Token ${token}` }
             });
           }
@@ -309,7 +310,7 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
             cancellation_preference: cancellationPreference,
             table_request: tableRequest || undefined,
             special_requests: specialRequests || undefined,
-            status: paymentState === "unpaid" ? "pending" : "confirmed",
+            status: paymentState === "unpaid" || isPartialPayment ? "pending" : "confirmed",
             primary_guest_name: guestName,
             primary_guest_email: guestEmail || undefined,
             primary_guest_phone: guestPhone || undefined,

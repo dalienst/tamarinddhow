@@ -248,8 +248,9 @@ export default function EditWalkInBookingForm({ token, onSuccess, bookingToEdit,
           );
         }
 
-        if (booking.status === "pending") {
-          await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: "confirmed" }, {
+        const targetStatus = isPartialPayment ? "pending" : "confirmed";
+        if (booking.status !== targetStatus) {
+          await axios.patch(`/api/v1/bookings/${booking.reference}/`, { status: targetStatus }, {
             headers: { Authorization: `Token ${token}` }
           });
         }

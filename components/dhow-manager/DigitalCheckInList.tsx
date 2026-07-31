@@ -18,7 +18,8 @@ import {
   Loader2,
   Pencil,
   Settings,
-  QrCode
+  QrCode,
+  Trash2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
@@ -100,6 +101,24 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
       toast.success("Roster check-in synced successfully!", { id: loadingToast });
     } catch (err) {
       toast.error("Failed to sync checklist.", { id: loadingToast });
+    }
+  };
+
+  const handleDeleteBooking = async (reference: string) => {
+    if (disabled) return;
+    if (!window.confirm(`Permanently delete booking ${reference}?`)) return;
+
+    const loadingToast = toast.loading("Deleting booking...");
+    try {
+      const response = await fetch(`/api/v1/bookings/${reference}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Token ${token}` }
+      });
+      if (!response.ok) throw new Error("Failed");
+      toast.success("Booking deleted successfully.", { id: loadingToast });
+      onRefetch();
+    } catch (err) {
+      toast.error("Failed to delete booking.", { id: loadingToast });
     }
   };
 
@@ -320,6 +339,16 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
+                  {b.check_in_status !== "checked_in" && (
+                    <button
+                      onClick={() => handleDeleteBooking(b.reference)}
+                      disabled={disabled}
+                      className="p-2 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50 transition-all disabled:opacity-40"
+                      title="Permanently Delete Booking"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Plate roster toggle */}
@@ -537,6 +566,9 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                           <button onClick={() => handleMainCheckIn(b, "no_show")} disabled={disabled} className={`p-1.5 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed ${currentStatus === "no_show" ? "bg-rose-500 text-white border-rose-600 shadow-sm" : "bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50"}`} title={disabled ? "Sailing checklist is closed" : "Mark Group No Show"}><XCircle className="w-5 h-5" /></button>
                           <button onClick={() => router.push(`/dhow-manager/walk-in/${b.reference}/edit`)} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50 transition-all" title="Modify Booking Details"><Settings className="w-5 h-5" /></button>
                           <button onClick={() => setSelectedQrRef(b.reference)} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-amber-600 hover:bg-amber-50 transition-all" title="View Ticket QR Code"><QrCode className="w-5 h-5" /></button>
+                          {b.check_in_status !== "checked_in" && (
+                            <button onClick={() => handleDeleteBooking(b.reference)} disabled={disabled} className="p-1.5 rounded-lg border bg-white text-slate-400 border-slate-200 hover:text-rose-600 hover:bg-rose-50 transition-all disabled:opacity-40" title="Permanently Delete Booking"><Trash2 className="w-5 h-5" /></button>
+                          )}
                         </div>
                       </td>
                     </tr>

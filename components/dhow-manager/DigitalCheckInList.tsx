@@ -25,7 +25,9 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { updateBookingGuest } from "@/services/bookings";
 import { assignTable } from "@/services/vessels";
+import { deleteBooking } from "@/services/bookings";
 import { TicketQRModal } from "./TicketQRModal";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 
 interface DigitalCheckInListProps {
@@ -61,6 +63,9 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
 
   // QR Code Modal state
   const [selectedQrRef, setSelectedQrRef] = useState<string | null>(null);
+  
+  const [deleteTargetRef, setDeleteTargetRef] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const initial: Record<string, CheckInStatus> = {};
@@ -104,22 +109,25 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
     }
   };
 
-  const handleDeleteBooking = async (reference: string) => {
-    if (disabled) return;
-    if (!window.confirm(`Permanently delete booking ${reference}?`)) return;
+  const confirmDeleteBooking = async () => {
+    if (!deleteTargetRef || disabled) return;
 
+    setIsDeleting(true);
     const loadingToast = toast.loading("Deleting booking...");
     try {
-      const response = await fetch(`/api/v1/bookings/${reference}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Token ${token}` }
-      });
-      if (!response.ok) throw new Error("Failed");
+      await deleteBooking(deleteTargetRef, token);
       toast.success("Booking deleted successfully.", { id: loadingToast });
+      setDeleteTargetRef(null);
       onRefetch();
     } catch (err) {
       toast.error("Failed to delete booking.", { id: loadingToast });
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleDeleteBooking = (reference: string) => {
+    setDeleteTargetRef(reference);
   };
 
   const handlePrint = async () => {
@@ -647,6 +655,18 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
           bookingRef={selectedQrRef}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={deleteTargetRef !== null}
+        title="Delete Booking Permanently"
+        message={`This will permanently delete booking ${deleteTargetRef} and all associated records. This cannot be undone. Only proceed if the booking was made in error and the guest has not yet checked in.`}
+        confirmText="Yes, Delete Permanently"
+        cancelText="Go Back"
+        type="danger"
+        isLoading={isDeleting}
+        onConfirm={confirmDeleteBooking}
+        onCancel={() => setDeleteTargetRef(null)}
+      />
     </div>
   );
 };

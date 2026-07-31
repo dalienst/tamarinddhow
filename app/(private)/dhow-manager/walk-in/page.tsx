@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useFetchBookings } from "@/hooks/bookings/actions";
-import { cancelBooking, updateBooking } from "@/services/bookings";
+import { cancelBooking, updateBooking, deleteBooking } from "@/services/bookings";
 import { useFetchSchedules } from "@/hooks/vessels/actions";
 import { useSession } from "next-auth/react";
 import { 
@@ -161,10 +161,7 @@ export default function WalkInBookingPage() {
   const handleDeleteBooking = async (reference: string) => {
     setIsDeletingRef(reference);
     try {
-      await fetch(`/api/v1/bookings/${reference}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Token ${token}` }
-      });
+      await deleteBooking(reference, token);
       toast.success("Booking deleted successfully.");
       refetchWalkIns();
     } catch (err) {

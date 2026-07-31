@@ -91,6 +91,15 @@ export const cancelBooking = async (
   return response.data;
 };
 
+export const deleteBooking = async (
+  reference: string,
+  token: string
+): Promise<void> => {
+  await apiActions.delete(`/api/v1/bookings/${reference}/`, {
+    headers: { Authorization: `Token ${token}` },
+  });
+};
+
 export const noShowBooking = async (
   reference: string,
   token: string,

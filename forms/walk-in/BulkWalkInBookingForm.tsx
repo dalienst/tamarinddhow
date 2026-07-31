@@ -428,169 +428,131 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
               {/* Accordion Body */}
               {isExpanded && (
                 <div className="p-6 sm:p-8 space-y-6 divide-y divide-slate-100 animate-fadeIn">
-                  {/* Grid layout containing fields */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left Column: Voyage details and Guest Contact */}
-                    <div className="space-y-6">
-                      {/* Sailing Selection */}
+                  
+                  {/* 1. Sailing Voyage Selection */}
+                  <div className="pb-6">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
+                    <select
+                      value={row.scheduleId}
+                      disabled={isSaving || loadingSchedules}
+                      onChange={(e) => updateRow(index, "scheduleId", e.target.value)}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+                    >
+                      {loadingSchedules ? (
+                        <option>Loading active voyages...</option>
+                      ) : upcomingSchedules.length === 0 ? (
+                        <option>No active voyages scheduled</option>
+                      ) : (
+                        upcomingSchedules.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  {/* 2. Guest Details */}
+                  <div className="space-y-4 pt-6 pb-6">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                      <User className="w-4 h-4 text-slate-400" /> Guest Contact Details
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Select Sailing Schedule</label>
-                        <select
-                          value={row.scheduleId}
-                          disabled={isSaving || loadingSchedules}
-                          onChange={(e) => updateRow(index, "scheduleId", e.target.value)}
-                          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
-                        >
-                          {loadingSchedules ? (
-                            <option>Loading active voyages...</option>
-                          ) : upcomingSchedules.length === 0 ? (
-                            <option>No active voyages scheduled</option>
-                          ) : (
-                            upcomingSchedules.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.dhow_name} - {s.date} ({s.meal_type_display}) [{s.available_capacity} seats left]
-                              </option>
-                            ))
-                          )}
-                        </select>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
+                        <input
+                          type="text"
+                          required
+                          disabled={isSaving}
+                          placeholder="e.g. John Doe"
+                          value={row.guestName}
+                          onChange={(e) => updateRow(index, "guestName", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                        />
                       </div>
-
-                      {/* Guest Details */}
-                      <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-slate-400" /> Guest Contact Details
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Full Name</label>
-                            <input
-                              type="text"
-                              required
-                              disabled={isSaving}
-                              placeholder="e.g. John Doe"
-                              value={row.guestName}
-                              onChange={(e) => updateRow(index, "guestName", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Email (Optional)</label>
-                            <input
-                              type="email"
-                              disabled={isSaving}
-                              placeholder="guest@example.com"
-                              value={row.guestEmail}
-                              onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
-                            <input
-                              type="tel"
-                              disabled={isSaving}
-                              placeholder="e.g. 0712345678"
-                              value={row.guestPhone}
-                              onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                            />
-                          </div>
-                        </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Email (Optional)</label>
+                        <input
+                          type="email"
+                          disabled={isSaving}
+                          placeholder="guest@example.com"
+                          value={row.guestEmail}
+                          onChange={(e) => updateRow(index, "guestEmail", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                        />
                       </div>
-
-                      {/* Guest Custom Overrides */}
-                      <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-bold text-slate-800 text-sm">Reservation & Pricing Customization</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Adults Count</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="50"
-                              disabled={isSaving}
-                              value={row.adultCount}
-                              onChange={(e) => updateRow(index, "adultCount", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Children Count (Kid Pricing)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="50"
-                              disabled={isSaving}
-                              value={row.childCount}
-                              onChange={(e) => updateRow(index, "childCount", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Adult (KES)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              disabled={isSaving}
-                              placeholder={`Standard: KES ${pricing.baseAdultPrice.toLocaleString()}`}
-                              value={row.customAdultPrice}
-                              onChange={(e) => updateRow(index, "customAdultPrice", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Kid (KES)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              disabled={isSaving}
-                              placeholder={`Standard: KES ${pricing.baseChildPrice.toLocaleString()}`}
-                              value={row.customChildPrice}
-                              onChange={(e) => updateRow(index, "customChildPrice", e.target.value)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Cancel Preferences & Seating */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Cancellation Preference</label>
-                          <select
-                            value={row.cancellationPreference}
-                            disabled={isSaving}
-                            onChange={(e) => updateRow(index, "cancellationPreference", e.target.value as any)}
-                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                          >
-                            <option value="refund">Refund Money</option>
-                            <option value="reschedule">Reschedule Date</option>
-                            <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Seating Request (Optional)</label>
-                          <input
-                            type="text"
-                            disabled={isSaving}
-                            placeholder="e.g. Deck seat, window table"
-                            value={row.tableRequest}
-                            onChange={(e) => updateRow(index, "tableRequest", e.target.value)}
-                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Phone Number (Optional)</label>
+                        <input
+                          type="tel"
+                          disabled={isSaving}
+                          placeholder="e.g. 0712345678"
+                          value={row.guestPhone}
+                          onChange={(e) => updateRow(index, "guestPhone", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
+                        />
                       </div>
                     </div>
+                  </div>
 
-                    {/* Right Column: Payment, Discounts, Special Requests & Summary Math */}
-                    <div className="space-y-6">
-                      {/* Pricing math box */}
-                      <div className="bg-amber-50/55 border border-amber-200/50 rounded-2xl p-4.5 text-xs text-amber-900 font-semibold space-y-2">
+                  {/* 3. Reservation & Pricing Override */}
+                  <div className="space-y-4 pt-6 pb-6">
+                    <h3 className="font-bold text-slate-800 text-sm">Reservation & Pricing Customization</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Adults Count</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="50"
+                          disabled={isSaving}
+                          value={row.adultCount}
+                          onChange={(e) => updateRow(index, "adultCount", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Children Count (Kid Pricing)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          disabled={isSaving}
+                          value={row.childCount}
+                          onChange={(e) => updateRow(index, "childCount", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Adult (Override KES)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          disabled={isSaving}
+                          placeholder={`Standard: KES ${pricing.baseAdultPrice.toLocaleString()}`}
+                          value={row.customAdultPrice}
+                          onChange={(e) => updateRow(index, "customAdultPrice", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Custom Price per Kid (Override KES)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          disabled={isSaving}
+                          placeholder={`Standard: KES ${pricing.baseChildPrice.toLocaleString()}`}
+                          value={row.customChildPrice}
+                          onChange={(e) => updateRow(index, "customChildPrice", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/20 border-amber-200/60 font-semibold text-slate-800"
+                        />
+                      </div>
+
+                      {/* Pricing math details */}
+                      <div className="sm:col-span-2 bg-amber-50/55 border border-amber-200/50 rounded-xl p-4 text-xs text-amber-900 font-semibold space-y-2">
                         <div className="text-[10px] text-amber-600 uppercase font-bold tracking-wider">Pricing Math Summary</div>
                         <div className="flex justify-between">
-                          <span>
-                            {row.adultCount} Adults x KES {pricing.ticketSubtotal.toLocaleString()}
-                          </span>
+                          <span>{row.adultCount} Adults x KES {pricing.baseAdultPrice.toLocaleString()} + {row.childCount} Children x KES {pricing.baseChildPrice.toLocaleString()}</span>
                           <span>KES {pricing.ticketSubtotal.toLocaleString()}</span>
                         </div>
                         {row.selectedAddons.length > 0 && (
@@ -619,176 +581,46 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                           <span>KES {pricing.finalTotal.toLocaleString()}</span>
                         </div>
                       </div>
+                    </div>
+                  </div>
 
-                      {/* Payment State */}
-                      <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-bold text-slate-800 text-sm">Payment Settings</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Select Payment Method</label>
-                            <select
-                              value={row.paymentState}
-                              disabled={isSaving}
-                              onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
-                              className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
-                            >
-                              <option value="cash">Paid — Cash</option>
-                              <option value="mpesa">Paid — M-Pesa</option>
-                              <option value="visa">Paid — Visa</option>
-                              <option value="mastercard">Paid — Mastercard</option>
-                              <option value="staff_card">Staff Card</option>
-                              <option value="agent_credit">Agent Credit</option>
-                              <option value="waived">Waived</option>
-                              <option value="unpaid">Unpaid</option>
-                            </select>
-                          </div>
-
-                          {row.paymentState !== "unpaid" && (
-                            <div>
-                              <label className="block text-xs font-medium text-slate-700 mb-1">Transaction Ref / Code</label>
-                              <input
-                                type="text"
-                                disabled={isSaving}
-                                placeholder="e.g. QX12345678"
-                                value={row.transactionRef}
-                                onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
-                                className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 uppercase font-semibold text-slate-800"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Partial Payment */}
-                        {row.paymentState !== "unpaid" && (
-                          <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/60 text-xs space-y-2">
-                            <label className="flex items-center gap-2 cursor-pointer select-none font-bold text-slate-700">
-                              <input
-                                type="checkbox"
-                                disabled={isSaving}
-                                checked={row.isPartialPayment}
-                                onChange={(e) => {
-                                  updateRow(index, "isPartialPayment", e.target.checked);
-                                  if (e.target.checked && !row.partialPaidAmount) {
-                                    updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
-                                  }
-                                }}
-                                className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
-                              />
-                              This is a partial payment (Guest will pay a deposit)
-                            </label>
-
-                            {row.isPartialPayment && (
-                              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
-                                <div>
-                                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Type</label>
-                                  <select
-                                    disabled={isSaving}
-                                    value={row.partialPaymentType}
-                                    onChange={(e) => {
-                                      updateRow(index, "partialPaymentType", e.target.value as any);
-                                      if (e.target.value === "percentage") {
-                                        updateRow(index, "partialPaidAmount", "50");
-                                      } else {
-                                        updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
-                                      }
-                                    }}
-                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs bg-white font-semibold text-slate-800"
-                                  >
-                                    <option value="amount">Amount (KES)</option>
-                                    <option value="percentage">Percentage (%)</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Value</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max={row.partialPaymentType === "percentage" ? 100 : pricing.finalTotal}
-                                    disabled={isSaving}
-                                    value={row.partialPaidAmount}
-                                    onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
-                                    className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs font-semibold text-slate-800"
-                                  />
-                                </div>
-                                <div className="col-span-2 text-[10px] text-amber-800 font-bold bg-amber-50/50 p-2 rounded-lg border border-amber-200/30 flex justify-between">
-                                  <span>Deposit Paid: KES {pricing.paidAmount.toLocaleString()}</span>
-                                  <span>Unpaid Balance: KES {pricing.unpaidBalance.toLocaleString()}</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Discounts */}
-                      <div className="space-y-4 pt-4 border-t border-slate-100">
-                        <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1"><Tag className="w-4 h-4 text-slate-400" /> Discounts</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Discount Option</label>
-                            <div className="flex gap-1.5">
-                              <select
-                                value={row.discountType}
-                                disabled={isSaving}
-                                onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
-                                className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white font-semibold text-slate-800"
-                              >
-                                <option value="amount">Flat KES</option>
-                                <option value="percentage">Percentage (%)</option>
-                              </select>
-                              <input
-                                type="number"
-                                min="0"
-                                max={row.discountType === "percentage" ? 100 : undefined}
-                                disabled={isSaving}
-                                value={row.discountValue}
-                                onChange={(e) => updateRow(index, "discountValue", e.target.value)}
-                                className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm font-semibold"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">
-                              Discount Reason {pricing.discount > 0 && <span className="text-rose-600 font-bold">*</span>}
-                            </label>
-                            <input
-                              type="text"
-                              disabled={isSaving}
-                              placeholder="e.g. Manager approval, group discount"
-                              value={row.discountReason}
-                              onChange={(e) => updateRow(index, "discountReason", e.target.value)}
-                              className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 ${
-                                pricing.discount > 0 && !row.discountReason.trim()
-                                  ? "border-rose-300 focus:ring-rose-500/20 bg-rose-50/10"
-                                  : "border-slate-200 focus:ring-amber-500/20"
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Special Requests */}
-                      <div className="pt-4 border-t border-slate-100 space-y-1">
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">Special Dietary / Voyage Requests (Optional)</label>
-                        <textarea
+                  {/* 4. Cancellation & Seating Request */}
+                  <div className="space-y-4 pt-6 pb-6">
+                    <h3 className="font-bold text-slate-800 text-sm">Booking Preferences</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Cancellation Preference</label>
+                        <select
+                          value={row.cancellationPreference}
                           disabled={isSaving}
-                          placeholder="e.g. Vegetarian diet, birthday celebration setup..."
-                          value={row.specialRequests}
-                          onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
-                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-amber-500/20 h-16 bg-white"
+                          onChange={(e) => updateRow(index, "cancellationPreference", e.target.value as any)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 text-slate-800 font-semibold"
+                        >
+                          <option value="confirmed">Confirmed (Sailing Guaranteed)</option>
+                          <option value="refund">Refund Money</option>
+                          <option value="reschedule">Reschedule Date</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Seating Request (Optional)</label>
+                        <input
+                          type="text"
+                          disabled={isSaving}
+                          placeholder="e.g. Deck seat, window table"
+                          value={row.tableRequest}
+                          onChange={(e) => updateRow(index, "tableRequest", e.target.value)}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60"
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Add-ons Grid */}
-                  <div className="space-y-4 pt-6">
+                  {/* 5. Custom Add-ons */}
+                  <div className="space-y-4 pt-6 pb-6">
                     <div className="flex items-center gap-2">
                       <ShoppingBag className="w-5 h-5 text-amber-600" />
-                      <h4 className="font-bold text-slate-800 text-sm">Custom Add-Ons (Cakes & Extras)</h4>
+                      <h3 className="font-bold text-slate-800 text-sm">Custom Add-Ons (Cakes & Extras)</h3>
                     </div>
-
                     {addonsList.length === 0 ? (
                       <div className="text-xs text-slate-400 italic">No available addons registered in vessel management.</div>
                     ) : (
@@ -796,7 +628,6 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                         {addonsList.map((addon) => {
                           const item = row.selectedAddons.find((a) => a.id === addon.id);
                           const qty = item?.quantity || 0;
-
                           return (
                             <div 
                               key={addon.id} 
@@ -833,10 +664,9 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                                   </button>
                                 </div>
                               </div>
-
                               {qty > 0 && item && (
                                 <div className="mt-2.5 pt-2 border-t border-slate-100/80 flex items-center justify-between gap-2">
-                                  <span className="text-[9px] text-slate-400 font-bold uppercase whitespace-nowrap">Price KES:</span>
+                                  <span className="text-[9px] text-slate-400 font-bold uppercase whitespace-nowrap">Price override:</span>
                                   <input
                                     type="number"
                                     min="0"
@@ -851,6 +681,166 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                         })}
                       </div>
                     )}
+                  </div>
+
+                  {/* 6. Discounts & Partial Payments */}
+                  <div className="space-y-4 pt-6 pb-6">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1"><Tag className="w-4 h-4 text-slate-400" /> Discounts & Deposits</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Discount Option</label>
+                        <div className="flex gap-1.5">
+                          <select
+                            value={row.discountType}
+                            disabled={isSaving}
+                            onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
+                            className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white font-semibold text-slate-800"
+                          >
+                            <option value="amount">Flat KES</option>
+                            <option value="percentage">Percentage (%)</option>
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            max={row.discountType === "percentage" ? 100 : undefined}
+                            disabled={isSaving}
+                            value={row.discountValue}
+                            onChange={(e) => updateRow(index, "discountValue", e.target.value)}
+                            className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm font-semibold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          Discount Reason {pricing.discount > 0 && <span className="text-rose-600 font-bold">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          disabled={isSaving}
+                          placeholder="e.g. Manager approval, group discount"
+                          value={row.discountReason}
+                          onChange={(e) => updateRow(index, "discountReason", e.target.value)}
+                          className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 ${
+                            pricing.discount > 0 && !row.discountReason.trim()
+                              ? "border-rose-300 focus:ring-rose-500/20 bg-rose-50/10"
+                              : "border-slate-200 focus:ring-amber-500/20"
+                          }`}
+                        />
+                      </div>
+
+                      {/* Deposit / Partial payment configuration */}
+                      {row.paymentState !== "unpaid" && (
+                        <div className="sm:col-span-2 space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              disabled={isSaving}
+                              checked={row.isPartialPayment}
+                              onChange={(e) => {
+                                updateRow(index, "isPartialPayment", e.target.checked);
+                                if (e.target.checked && !row.partialPaidAmount) {
+                                  updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
+                                }
+                              }}
+                              className="rounded text-amber-600 focus:ring-amber-500 w-4 h-4"
+                            />
+                            This is a partial payment (Guest will pay a deposit)
+                          </label>
+
+                          {row.isPartialPayment && (
+                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Type</label>
+                                <select
+                                  disabled={isSaving}
+                                  value={row.partialPaymentType}
+                                  onChange={(e) => {
+                                    updateRow(index, "partialPaymentType", e.target.value as any);
+                                    if (e.target.value === "percentage") {
+                                      updateRow(index, "partialPaidAmount", "50");
+                                    } else {
+                                      updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
+                                    }
+                                  }}
+                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs bg-white font-semibold text-slate-800"
+                                >
+                                  <option value="amount">Amount (KES)</option>
+                                  <option value="percentage">Percentage (%)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Value</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max={row.partialPaymentType === "percentage" ? 100 : pricing.finalTotal}
+                                  disabled={isSaving}
+                                  value={row.partialPaidAmount}
+                                  onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
+                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs font-semibold text-slate-800"
+                                />
+                              </div>
+                              <div className="col-span-2 text-[10px] text-amber-800 font-bold bg-amber-50/50 p-2 rounded-lg border border-amber-200/30 flex justify-between">
+                                <span>Deposit Paid: KES {pricing.paidAmount.toLocaleString()}</span>
+                                <span>Unpaid Balance: KES {pricing.unpaidBalance.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 7. Payment State & Transaction Ref */}
+                  <div className="space-y-4 pt-6 pb-6">
+                    <h3 className="font-bold text-slate-800 text-sm">Payment settings</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Select Payment Method</label>
+                        <select
+                          value={row.paymentState}
+                          disabled={isSaving}
+                          onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
+                          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
+                        >
+                          <option value="cash">Paid — Cash</option>
+                          <option value="mpesa">Paid — M-Pesa</option>
+                          <option value="visa">Paid — Visa</option>
+                          <option value="mastercard">Paid — Mastercard</option>
+                          <option value="staff_card">Staff Card</option>
+                          <option value="agent_credit">Agent Credit</option>
+                          <option value="waived">Waived</option>
+                          <option value="unpaid">Unpaid</option>
+                        </select>
+                      </div>
+
+                      {row.paymentState !== "unpaid" && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">Transaction Ref / Code</label>
+                          <input
+                            type="text"
+                            disabled={isSaving}
+                            placeholder="e.g. QX12345678"
+                            value={row.transactionRef}
+                            onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
+                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 uppercase font-semibold text-slate-800"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 8. Special Requests */}
+                  <div className="pt-6 space-y-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Special Dietary / Voyage Requests (Optional)</label>
+                    <textarea
+                      disabled={isSaving}
+                      placeholder="e.g. Vegetarian diet, birthday celebration setup..."
+                      value={row.specialRequests}
+                      onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
+                      className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-amber-500/20 h-16 bg-white"
+                    />
                   </div>
                 </div>
               )}

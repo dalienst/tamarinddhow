@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { getBookingDetail } from "@/services/bookings";
 import { Edit3, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
-import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
+import EditWalkInBookingForm from "@/forms/walk-in/EditWalkInBookingForm";
 import { Booking } from "@/types/booking";
 
 export default function EditBookingPage() {
@@ -16,6 +16,7 @@ export default function EditBookingPage() {
   const token = session?.user?.token || "";
 
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [initialPayment, setInitialPayment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -23,9 +24,20 @@ export default function EditBookingPage() {
     if (!ref || !token) return;
 
     setLoading(true);
-    getBookingDetail(ref, { headers: { Authorization: `Token ${token}` } })
-      .then((res) => {
-        setBooking(res);
+    // Fetch both booking and payments concurrently
+    Promise.all([
+      getBookingDetail(ref, { headers: { Authorization: `Token ${token}` } }),
+      fetch(`/api/v1/payments/?booking=${ref}`, { headers: { Authorization: `Token ${token}` } }).then(res => {
+        if (!res.ok) throw new Error("Failed to fetch payments");
+        return res.json();
+      })
+    ])
+      .then(([bookingRes, paymentsRes]) => {
+        setBooking(bookingRes);
+        // Find if there's a completed payment
+        const payments = paymentsRes.results || [];
+        const completed = payments.find((p: any) => p.status === "completed");
+        setInitialPayment(completed || null);
       })
       .catch(() => {
         setError("Failed to load booking details or reference is invalid.");
@@ -96,9 +108,10 @@ export default function EditBookingPage() {
       </div>
 
       {/* Form wrapper */}
-      <WalkInBookingForm
+      <EditWalkInBookingForm
         token={token}
         bookingToEdit={booking}
+        initialPayment={initialPayment}
         onSuccess={handleSuccess}
       />
 

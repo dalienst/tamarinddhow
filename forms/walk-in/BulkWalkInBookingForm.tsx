@@ -684,55 +684,69 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                   </div>
 
                   {/* 6. Discounts & Partial Payments */}
-                  <div className="space-y-4 pt-6 pb-6">
-                    <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1"><Tag className="w-4 h-4 text-slate-400" /> Discounts & Deposits</h3>
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <h3 className="font-bold text-slate-800 text-sm">Discounts & Partial Payments</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Discount Option</label>
-                        <div className="flex gap-1.5">
-                          <select
-                            value={row.discountType}
-                            disabled={isSaving}
-                            onChange={(e) => updateRow(index, "discountType", e.target.value as any)}
-                            className="w-28 px-2 py-1.5 border border-slate-200 rounded-lg text-sm bg-white font-semibold text-slate-800"
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-slate-700">Discount Option</label>
+                        <div className="flex rounded-lg border border-slate-200 overflow-hidden text-xs font-bold w-fit bg-slate-100 p-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateRow(index, "discountType", "amount");
+                              updateRow(index, "discountValue", "0");
+                            }}
+                            className={`px-3 py-1 rounded-md transition-all ${
+                              row.discountType === "amount" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                            }`}
                           >
-                            <option value="amount">Flat KES</option>
-                            <option value="percentage">Percentage (%)</option>
-                          </select>
-                          <input
-                            type="number"
-                            min="0"
-                            max={row.discountType === "percentage" ? 100 : undefined}
-                            disabled={isSaving}
-                            value={row.discountValue}
-                            onChange={(e) => updateRow(index, "discountValue", e.target.value)}
-                            className="flex-1 px-3.5 py-2 border border-slate-200 rounded-lg text-sm font-semibold"
-                          />
+                            Flat KES
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateRow(index, "discountType", "percentage");
+                              updateRow(index, "discountValue", "0");
+                            }}
+                            className={`px-3 py-1 rounded-md transition-all ${
+                              row.discountType === "percentage" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                            }`}
+                          >
+                            Percentage (%)
+                          </button>
                         </div>
+                        
+                        <input
+                          type="number"
+                          min="0"
+                          max={row.discountType === "percentage" ? 100 : undefined}
+                          disabled={isSaving}
+                          placeholder={row.discountType === "percentage" ? "e.g. 10%" : "e.g. 1000 KES"}
+                          value={row.discountValue}
+                          onChange={(e) => {
+                            updateRow(index, "discountValue", e.target.value);
+                            updateRow(index, "isPartialPayment", false);
+                            updateRow(index, "partialPaidAmount", "");
+                          }}
+                          className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white font-semibold mt-1"
+                        />
                       </div>
-
                       <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">
-                          Discount Reason {pricing.discount > 0 && <span className="text-rose-600 font-bold">*</span>}
-                        </label>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Discount Reason (Required if Discount applied)</label>
                         <input
                           type="text"
                           disabled={isSaving}
+                          required={parseFloat(row.discountValue) > 0}
                           placeholder="e.g. Manager approval, group discount"
                           value={row.discountReason}
                           onChange={(e) => updateRow(index, "discountReason", e.target.value)}
-                          className={`w-full px-3.5 py-2 border rounded-lg text-sm focus:ring-2 ${
-                            pricing.discount > 0 && !row.discountReason.trim()
-                              ? "border-rose-300 focus:ring-rose-500/20 bg-rose-50/10"
-                              : "border-slate-200 focus:ring-amber-500/20"
-                          }`}
+                          className="w-full px-3.5 py-2 mt-[26px] border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white"
                         />
                       </div>
 
-                      {/* Deposit / Partial payment configuration */}
                       {row.paymentState !== "unpaid" && (
-                        <div className="sm:col-span-2 space-y-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                        <div className="sm:col-span-2 space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
                             <input
                               type="checkbox"
                               disabled={isSaving}
@@ -749,98 +763,144 @@ export default function BulkWalkInBookingForm({ token, onSuccess }: BulkWalkInBo
                           </label>
 
                           {row.isPartialPayment && (
-                            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/50">
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Type</label>
-                                <select
-                                  disabled={isSaving}
-                                  value={row.partialPaymentType}
-                                  onChange={(e) => {
-                                    updateRow(index, "partialPaymentType", e.target.value as any);
-                                    if (e.target.value === "percentage") {
-                                      updateRow(index, "partialPaidAmount", "50");
-                                    } else {
+                            <div className="pt-1 space-y-2.5 animate-fadeIn">
+                              <div className="space-y-1">
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase">Deposit Type</label>
+                                <div className="flex rounded-lg border border-slate-200 overflow-hidden text-[10px] font-bold w-fit bg-slate-100 p-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateRow(index, "partialPaymentType", "amount");
                                       updateRow(index, "partialPaidAmount", Math.floor(pricing.finalTotal / 2).toString());
-                                    }
-                                  }}
-                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs bg-white font-semibold text-slate-800"
-                                >
-                                  <option value="amount">Amount (KES)</option>
-                                  <option value="percentage">Percentage (%)</option>
-                                </select>
+                                    }}
+                                    className={`px-3 py-1 rounded-md transition-all ${
+                                      row.partialPaymentType === "amount" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                                    }`}
+                                  >
+                                    Flat KES
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateRow(index, "partialPaymentType", "percentage");
+                                      updateRow(index, "partialPaidAmount", "50");
+                                    }}
+                                    className={`px-3 py-1 rounded-md transition-all ${
+                                      row.partialPaymentType === "percentage" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"
+                                    }`}
+                                  >
+                                    Percentage (%)
+                                  </button>
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Deposit Value</label>
+
+                              <div className="pt-1">
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                                  {row.partialPaymentType === "percentage" ? "Deposit Percentage (%)" : "Amount Paid Today (KES)"}
+                                </label>
                                 <input
                                   type="number"
                                   min="1"
                                   max={row.partialPaymentType === "percentage" ? 100 : pricing.finalTotal}
                                   disabled={isSaving}
+                                  placeholder={row.partialPaymentType === "percentage" ? "e.g. 50" : "e.g. 5000"}
                                   value={row.partialPaidAmount}
                                   onChange={(e) => updateRow(index, "partialPaidAmount", e.target.value)}
-                                  className="w-full px-2.5 py-1.5 border border-slate-200 rounded-md text-xs font-semibold text-slate-800"
+                                  className="w-full sm:w-48 px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-white font-semibold"
                                 />
-                              </div>
-                              <div className="col-span-2 text-[10px] text-amber-800 font-bold bg-amber-50/50 p-2 rounded-lg border border-amber-200/30 flex justify-between">
-                                <span>Deposit Paid: KES {pricing.paidAmount.toLocaleString()}</span>
-                                <span>Unpaid Balance: KES {pricing.unpaidBalance.toLocaleString()}</span>
+                                <div className="text-[10px] text-slate-500 mt-1 font-semibold">
+                                  {(() => {
+                                    const val = parseFloat(row.partialPaidAmount) || 0;
+                                    const absoluteDeposit = row.partialPaymentType === "percentage" ? pricing.finalTotal * (val / 100) : val;
+                                    const remaining = Math.max(0, pricing.finalTotal - absoluteDeposit);
+                                    return (
+                                      <>
+                                        {row.partialPaymentType === "percentage" && (
+                                          <span className="block text-slate-600 font-bold">
+                                            Equivalent Deposit Amount: KES {absoluteDeposit.toLocaleString()}
+                                          </span>
+                                        )}
+                                        Remaining unpaid balance of KES {remaining.toLocaleString()} will be due later.
+                                      </>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* 7. Payment State & Transaction Ref */}
-                  <div className="space-y-4 pt-6 pb-6">
-                    <h3 className="font-bold text-slate-800 text-sm">Payment settings</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Select Payment Method</label>
-                        <select
-                          value={row.paymentState}
-                          disabled={isSaving}
-                          onChange={(e) => updateRow(index, "paymentState", e.target.value as any)}
-                          className="w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 font-semibold text-slate-800"
-                        >
-                          <option value="cash">Paid — Cash</option>
-                          <option value="mpesa">Paid — M-Pesa</option>
-                          <option value="visa">Paid — Visa</option>
-                          <option value="mastercard">Paid — Mastercard</option>
-                          <option value="staff_card">Staff Card</option>
-                          <option value="agent_credit">Agent Credit</option>
-                          <option value="waived">Waived</option>
-                          <option value="unpaid">Unpaid</option>
-                        </select>
-                      </div>
-
-                      {row.paymentState !== "unpaid" && (
-                        <div>
-                          <label className="block text-xs font-medium text-slate-700 mb-1">Transaction Ref / Code</label>
-                          <input
-                            type="text"
-                            disabled={isSaving}
-                            placeholder="e.g. QX12345678"
-                            value={row.transactionRef}
-                            onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
-                            className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 uppercase font-semibold text-slate-800"
-                          />
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Special Dietary / Voyage Requests (Optional)</label>
+                      <textarea
+                        disabled={isSaving}
+                        placeholder="e.g. Vegetarian diet, birthday celebration setup..."
+                        value={row.specialRequests}
+                        onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
+                        className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 h-16 disabled:opacity-60"
+                      />
                     </div>
                   </div>
 
-                  {/* 8. Special Requests */}
-                  <div className="pt-6 space-y-1">
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Special Dietary / Voyage Requests (Optional)</label>
-                    <textarea
-                      disabled={isSaving}
-                      placeholder="e.g. Vegetarian diet, birthday celebration setup..."
-                      value={row.specialRequests}
-                      onChange={(e) => updateRow(index, "specialRequests", e.target.value)}
-                      className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-amber-500/20 h-16 bg-white"
-                    />
+                  {/* 7. EXPLICIT PAYMENT STATES */}
+                  <div className="space-y-3 pt-4 border-t border-slate-100 bg-slate-50 p-4 rounded-xl border">
+                    <label className="block font-bold text-slate-800 text-sm flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-emerald-600" /> Explicit Payment State Selection
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                      {[
+                        { id: "cash", label: "Paid — Cash", desc: "Cash collected" },
+                        { id: "mpesa", label: "Paid — M-Pesa", desc: "M-Pesa verified" },
+                        { id: "visa", label: "Paid — Visa", desc: "Visa Card" },
+                        { id: "mastercard", label: "Paid — Mastercard", desc: "Mastercard" },
+                        { id: "staff_card", label: "Staff Card", desc: "Staff Special Card" },
+                        { id: "agent_credit", label: "Agent Credit", desc: "Voucher / Invoice" },
+                        { id: "waived", label: "Waived", desc: "Complimentary" },
+                        { id: "unpaid", label: "Unpaid", desc: "Pay on arrival" },
+                      ].map((p) => (
+                        <button
+                          type="button"
+                          key={p.id}
+                          disabled={isSaving}
+                          onClick={() => {
+                            updateRow(index, "paymentState", p.id as any);
+                            if (p.id === "unpaid") {
+                              updateRow(index, "isPartialPayment", false);
+                              updateRow(index, "partialPaidAmount", "");
+                            }
+                          }}
+                          className={`p-3 rounded-lg border text-center transition-all disabled:opacity-60 disabled:cursor-not-allowed ${
+                            row.paymentState === p.id
+                              ? "bg-amber-600 text-white border-amber-700 shadow-sm font-semibold"
+                              : "bg-white text-slate-700 border-slate-200 hover:border-amber-400"
+                          }`}
+                        >
+                          <div className="text-xs font-bold">{p.label}</div>
+                          <div className={`text-[10px] ${row.paymentState === p.id ? "text-amber-100" : "text-slate-400"}`}>
+                            {p.desc}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {row.paymentState !== "unpaid" && (
+                      <div className="pt-3 border-t border-slate-200/60 mt-3 animate-fadeIn">
+                        <label className="block text-xs font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                          Transaction Ref / Code (Required for {row.paymentState.toUpperCase()})
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          disabled={isSaving}
+                          placeholder="e.g. QX12345678"
+                          value={row.transactionRef}
+                          onChange={(e) => updateRow(index, "transactionRef", e.target.value)}
+                          className="w-full sm:w-1/2 px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 uppercase font-bold text-slate-800 bg-white"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

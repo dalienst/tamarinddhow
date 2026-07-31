@@ -66,67 +66,78 @@ export default function WalkInBookingForm({ token, onSuccess, initialScheduleId,
   
   const [isSaving, setIsSaving] = useState(false);
 
+  // Effect 1: Populate form when editing an existing booking. 
+  // Uses bookingToEdit.id as a stable key so it only reruns when the booking itself changes,
+  // NOT on every user keystroke (which was the bug causing inputs to reset on edit).
   useEffect(() => {
-    if (bookingToEdit) {
-      setSelectedScheduleId(bookingToEdit.schedule);
-      setGuestName(bookingToEdit.primary_guest_name || bookingToEdit.booked_by_name || "");
-      setGuestEmail(bookingToEdit.primary_guest_email || "");
-      setGuestPhone(bookingToEdit.primary_guest_phone || "");
-      setAdultCount(bookingToEdit.adult_count?.toString() || "2");
-      setChildCount(bookingToEdit.child_count?.toString() || "0");
-      setCustomAdultPrice(bookingToEdit.custom_price_per_person?.toString() || "");
-      setCustomChildPrice(bookingToEdit.custom_price_per_child?.toString() || "");
-      setDiscountType(bookingToEdit.discount_type || "amount");
-      setDiscountValue(bookingToEdit.discount_value?.toString() || "0");
-      setDiscountReason(bookingToEdit.discount_reason || "");
-      setTableRequest(bookingToEdit.table_request || "");
-      setSpecialRequests(bookingToEdit.special_requests || "");
-      setCancellationPreference(bookingToEdit.cancellation_preference);
+    if (!bookingToEdit) return;
 
-      if (bookingToEdit.booking_addons) {
-        setSelectedAddons(
-          bookingToEdit.booking_addons.map((ba) => ({
-            id: ba.addon,
-            name: ba.addon_name || "Extra Onboard Item",
-            price: parseFloat(ba.unit_price.toString()),
-            quantity: ba.quantity
-          }))
-        );
-      }
+    setSelectedScheduleId(bookingToEdit.schedule);
+    setGuestName(bookingToEdit.primary_guest_name || bookingToEdit.booked_by_name || "");
+    setGuestEmail(bookingToEdit.primary_guest_email || "");
+    setGuestPhone(bookingToEdit.primary_guest_phone || "");
+    setAdultCount(bookingToEdit.adult_count?.toString() || "2");
+    setChildCount(bookingToEdit.child_count?.toString() || "0");
+    setCustomAdultPrice(bookingToEdit.custom_price_per_person?.toString() || "");
+    setCustomChildPrice(bookingToEdit.custom_price_per_child?.toString() || "");
+    setDiscountType(bookingToEdit.discount_type || "amount");
+    setDiscountValue(bookingToEdit.discount_value?.toString() || "0");
+    setDiscountReason(bookingToEdit.discount_reason || "");
+    setTableRequest(bookingToEdit.table_request || "");
+    setSpecialRequests(bookingToEdit.special_requests || "");
+    setCancellationPreference(bookingToEdit.cancellation_preference);
 
-      // Fetch payment details for prefilling edit form
-      axios.get(`/api/v1/payments/?booking=${bookingToEdit.id}`, {
-        headers: { Authorization: `Token ${token}` }
-      }).then((res) => {
-        const payments = res.data.results || [];
-        const completedPayment = payments.find((p: any) => p.status === "completed");
-        if (completedPayment) {
-          setPaymentState(completedPayment.payment_method);
-          setTransactionRef(completedPayment.transaction_ref || "");
-          const paid = parseFloat(completedPayment.amount);
-          const total = parseFloat(bookingToEdit.total_amount.toString());
-          if (paid < total) {
-            setIsPartialPayment(true);
-            setPartialPaymentType("amount");
-            setPartialPaidAmount(paid.toString());
-          } else {
-            setIsPartialPayment(false);
-            setPartialPaidAmount("");
-          }
+    if (bookingToEdit.booking_addons) {
+      setSelectedAddons(
+        bookingToEdit.booking_addons.map((ba) => ({
+          id: ba.addon,
+          name: ba.addon_name || "Extra Onboard Item",
+          price: parseFloat(ba.unit_price.toString()),
+          quantity: ba.quantity
+        }))
+      );
+    }
+
+    // Fetch payment details for prefilling edit form
+    axios.get(`/api/v1/payments/?booking=${bookingToEdit.id}`, {
+      headers: { Authorization: `Token ${token}` }
+    }).then((res) => {
+      const payments = res.data.results || [];
+      const completedPayment = payments.find((p: any) => p.status === "completed");
+      if (completedPayment) {
+        setPaymentState(completedPayment.payment_method);
+        setTransactionRef(completedPayment.transaction_ref || "");
+        const paid = parseFloat(completedPayment.amount);
+        const total = parseFloat(bookingToEdit.total_amount.toString());
+        if (paid < total) {
+          setIsPartialPayment(true);
+          setPartialPaymentType("amount");
+          setPartialPaidAmount(paid.toString());
         } else {
-          setPaymentState("unpaid");
           setIsPartialPayment(false);
           setPartialPaidAmount("");
         }
-      }).catch((err) => {
-        console.error("Failed to load payments for booking:", err);
-      });
-    } else if (initialScheduleId) {
+      } else {
+        setPaymentState("unpaid");
+        setIsPartialPayment(false);
+        setPartialPaidAmount("");
+      }
+    }).catch((err) => {
+      console.error("Failed to load payments for booking:", err);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingToEdit?.id, token]);
+
+  // Effect 2: Set default schedule selection for NEW bookings only.
+  useEffect(() => {
+    if (bookingToEdit) return; // Don't interfere with edit mode
+    if (initialScheduleId) {
       setSelectedScheduleId(initialScheduleId);
     } else if (upcomingSchedules.length > 0 && !selectedScheduleId) {
       setSelectedScheduleId(upcomingSchedules[0].id);
     }
-  }, [upcomingSchedules, selectedScheduleId, initialScheduleId, bookingToEdit, token]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [upcomingSchedules, initialScheduleId]);
 
   // Compute pricing dynamically
   const selectedSchedule = schedules.find((s) => s.id === selectedScheduleId);

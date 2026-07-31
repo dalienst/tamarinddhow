@@ -19,7 +19,8 @@ import {
   MenuSquare,
   Loader2,
   Edit,
-  RotateCcw
+  RotateCcw,
+  Trash2
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { SkeletonCard } from "@/components/common/Skeleton";
@@ -39,6 +40,8 @@ export default function WalkInBookingPage() {
   const [isSavingReschedule, setIsSavingReschedule] = useState(false);
   const [cancelTargetRef, setCancelTargetRef] = useState<string | null>(null);
   const [isCancellingRef, setIsCancellingRef] = useState<string | null>(null);
+  const [deleteTargetRef, setDeleteTargetRef] = useState<string | null>(null);
+  const [isDeletingRef, setIsDeletingRef] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"active" | "past">("active");
 
 
@@ -152,6 +155,23 @@ export default function WalkInBookingPage() {
     } finally {
       setIsCancellingRef(null);
       setCancelTargetRef(null);
+    }
+  };
+
+  const handleDeleteBooking = async (reference: string) => {
+    setIsDeletingRef(reference);
+    try {
+      await fetch(`/api/v1/bookings/${reference}/`, {
+        method: "DELETE",
+        headers: { Authorization: `Token ${token}` }
+      });
+      toast.success("Booking deleted successfully.");
+      refetchWalkIns();
+    } catch (err) {
+      toast.error("Failed to delete booking. It may have already been checked in or the sailing has passed.");
+    } finally {
+      setIsDeletingRef(null);
+      setDeleteTargetRef(null);
     }
   };
 
@@ -334,6 +354,22 @@ export default function WalkInBookingPage() {
                                 )}
                               </button>
 
+                              {/* Delete — only if not checked in */}
+                              {booking.check_in_status !== "checked_in" && (
+                                <button
+                                  disabled={isDeletingRef === booking.reference}
+                                  onClick={() => setDeleteTargetRef(booking.reference)}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
+                                  title="Permanently Delete Booking"
+                                >
+                                  {isDeletingRef === booking.reference ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-rose-700" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+
                               {/* Manual Request Refund */}
                               {parseFloat((booking.total_paid || 0).toString()) > 0 && (
                                 <button
@@ -462,6 +498,20 @@ export default function WalkInBookingPage() {
           if (cancelTargetRef) handleCancelBooking(cancelTargetRef);
         }}
         onCancel={() => setCancelTargetRef(null)}
+      />
+
+      <ConfirmationModal
+        isOpen={deleteTargetRef !== null}
+        title="Delete Booking Permanently"
+        message={`This will permanently delete booking ${deleteTargetRef} and all associated records. This cannot be undone. Only proceed if the booking was made in error and the guest has not yet checked in.`}
+        confirmText="Yes, Delete Permanently"
+        cancelText="Go Back"
+        type="danger"
+        isLoading={isDeletingRef !== null && isDeletingRef === deleteTargetRef}
+        onConfirm={() => {
+          if (deleteTargetRef) handleDeleteBooking(deleteTargetRef);
+        }}
+        onCancel={() => setDeleteTargetRef(null)}
       />
 
       {/* MODAL 3: Manual Refund Request Form */}

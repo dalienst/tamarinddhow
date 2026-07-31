@@ -322,72 +322,72 @@ export default function WalkInBookingPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          {active && (
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => router.push(`/dhow-manager/walk-in/${booking.reference}/edit`)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
-
-                                title="Edit Booking Details"
-                              >
-                                <Edit className="w-3.5 h-3.5 text-blue-600" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => setRescheduleTarget(booking)}
-                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
-                                title="Reschedule Guest Voyage"
-                              >
-                                <CalendarDays className="w-3.5 h-3.5" />
-                                Reschedule
-                              </button>
-                              <button
-                                disabled={isCancellingRef === booking.reference}
-                                onClick={() => setCancelTargetRef(booking.reference)}
-                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
-                                title="Cancel Booking"
-                              >
-                                {isCancellingRef === booking.reference ? (
-                                  <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
-                                ) : (
-                                  <XCircle className="w-4 h-4" />
-                                )}
-                              </button>
-
-                              {/* Delete — only if not checked in */}
-                              {booking.check_in_status !== "checked_in" && (
+                          <div className="flex items-center justify-end gap-1.5">
+                            {active && (
+                              <>
                                 <button
-                                  disabled={isDeletingRef === booking.reference}
-                                  onClick={() => setDeleteTargetRef(booking.reference)}
-                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
-                                  title="Permanently Delete Booking"
+                                  onClick={() => router.push(`/dhow-manager/walk-in/${booking.reference}/edit`)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                                  title="Edit Booking Details"
                                 >
-                                  {isDeletingRef === booking.reference ? (
-                                    <Loader2 className="w-4 h-4 animate-spin text-rose-700" />
+                                  <Edit className="w-3.5 h-3.5 text-blue-600" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => setRescheduleTarget(booking)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                                  title="Reschedule Guest Voyage"
+                                >
+                                  <CalendarDays className="w-3.5 h-3.5" />
+                                  Reschedule
+                                </button>
+                                <button
+                                  disabled={isCancellingRef === booking.reference}
+                                  onClick={() => setCancelTargetRef(booking.reference)}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
+                                  title="Cancel Booking"
+                                >
+                                  {isCancellingRef === booking.reference ? (
+                                    <Loader2 className="w-4 h-4 animate-spin text-rose-600" />
                                   ) : (
-                                    <Trash2 className="w-4 h-4" />
+                                    <XCircle className="w-4 h-4" />
                                   )}
                                 </button>
-                              )}
+                              </>
+                            )}
 
-                              {/* Manual Request Refund */}
-                              {parseFloat((booking.total_paid || 0).toString()) > 0 && (
-                                <button
-                                  onClick={() => {
-                                    setRefundTarget(booking);
-                                    setRefundAmount((booking.total_paid || 0).toString());
-                                    setRefundNotes("");
-                                  }}
+                            {/* Delete — only if not checked in */}
+                            {booking.check_in_status !== "checked_in" && (
+                              <button
+                                disabled={isDeletingRef === booking.reference}
+                                onClick={() => setDeleteTargetRef(booking.reference)}
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg transition-colors border border-rose-100 disabled:opacity-50"
+                                title="Permanently Delete Booking"
+                              >
+                                {isDeletingRef === booking.reference ? (
+                                  <Loader2 className="w-4 h-4 animate-spin text-rose-700" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
 
-                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
-                                  title="Request Manual Refund"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
-                                  Refund
-                                </button>
-                              )}
-                            </div>
-                          )}
+                            {/* Manual Request Refund */}
+                            {parseFloat((booking.total_paid || 0).toString()) > 0 && (
+                              <button
+                                onClick={() => {
+                                  setRefundTarget(booking);
+                                  setRefundAmount((booking.total_paid || 0).toString());
+                                  setRefundNotes("");
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
+                                title="Request Manual Refund"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-rose-500" />
+                                Refund
+                              </button>
+                            )}
+                          </div>
                         </td>
 
                       </tr>

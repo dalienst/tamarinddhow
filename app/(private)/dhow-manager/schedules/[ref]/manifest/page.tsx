@@ -212,11 +212,11 @@ export default function ManifestPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {schedule && (
             <button
               onClick={handleOpenShareModal}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl transition-all shadow-sm"
             >
               <Share2 className="w-4 h-4 text-slate-500" />
               Share Public Manifest

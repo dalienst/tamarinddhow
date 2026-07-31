@@ -237,11 +237,11 @@ export default function ScheduleListPage() {
                 </div>
 
                 {/* Actions Bar Popover */}
-                <div className="flex items-center gap-2 relative">
-                  <div className="relative">
+                <div className="flex items-center gap-2">
+                  <div className="relative w-full sm:w-auto">
                     <button
                       onClick={() => setOpenMenuRef(openMenuRef === s.reference ? null : s.reference)}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors shadow-sm"
+                      className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 transition-colors shadow-sm"
                     >
                       Actions <ChevronDown className="w-3.5 h-3.5" />
                     </button>
@@ -252,7 +252,7 @@ export default function ScheduleListPage() {
                           className="fixed inset-0 z-10"
                           onClick={() => setOpenMenuRef(null)}
                         />
-                        <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fadeIn">
+                        <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-fadeIn">
                           <Link
                             href={`/dhow-manager/schedules/${s.reference}/manifest`}
                             onClick={() => setOpenMenuRef(null)}

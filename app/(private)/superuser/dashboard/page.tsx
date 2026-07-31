@@ -97,7 +97,7 @@ export default function SuperuserDashboard() {
                                         className="fixed inset-0 z-10" 
                                         onClick={() => setIsPopoverOpen(false)}
                                     ></div>
-                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
+                                    <div className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-48 bg-white rounded shadow-lg border border-gray-100 py-1 z-20 overflow-hidden">
                                         <button
                                             onClick={() => {
                                                 setActiveModal("agent")

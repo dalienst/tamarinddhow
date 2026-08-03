@@ -15,11 +15,14 @@ export default function ManagerReportsPage() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPaymentMethodFilter, setSelectedPaymentMethodFilter] = useState("");
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<"bookings" | "attendance">("bookings");
+
 
   // Query Hooks
   const { data: dhowsData } = useFetchDhows();
-  const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules();
-  const { data: bookingsData, isLoading: loadingBookings } = useFetchBookings();
+  const { data: schedulesData, isLoading: loadingSchedules } = useFetchSchedules({ page_size: 1000 });
+  const { data: bookingsData, isLoading: loadingBookings } = useFetchBookings({ page_size: 1000 });
   const { data: paymentsData } = useFetchPayments({ page_size: 1000 });
 
   const dhows = dhowsData?.results || [];
@@ -238,6 +241,94 @@ export default function ManagerReportsPage() {
     toast.success("CSV export downloaded successfully!");
   };
 
+  // Sailing Attendance Aggregation
+  const sailingAttendanceStats = useMemo(() => {
+    return filteredSchedules.map((s) => {
+      // Find all bookings for this schedule (excluding cancelled)
+      const associatedBookings = bookings.filter((b) => b.schedule === s.id && b.status !== "cancelled");
+      
+      const bookedPax = associatedBookings.reduce((sum, b) => sum + b.party_size, 0);
+      
+      let onboardedPax = 0;
+      let noShowPax = 0;
+      
+      associatedBookings.forEach((b) => {
+        const guests = b.booking_guests || [];
+        const checkedInCount = guests.filter((g) => g.status === "checked_in").length;
+        const noShowCount = guests.filter((g) => g.status === "no_show").length;
+        
+        onboardedPax += checkedInCount;
+        noShowPax += noShowCount;
+      });
+
+      const isCompleted = s.status === "completed";
+      const totalNoShows = isCompleted ? Math.max(0, bookedPax - onboardedPax) : noShowPax;
+      const plateVariance = isCompleted ? Math.max(0, bookedPax - onboardedPax) : 0;
+      const attendanceRate = bookedPax > 0 ? (onboardedPax / bookedPax) * 100 : 0;
+      
+      return {
+        scheduleId: s.id,
+        reference: s.reference,
+        date: s.date,
+        dhowName: s.dhow_name || "Unknown Vessel",
+        mealType: s.meal_type_display || "Voyage",
+        status: s.status,
+        bookedPax,
+        onboardedPax,
+        noShowPax: totalNoShows,
+        plateVariance,
+        attendanceRate,
+      };
+    });
+  }, [filteredSchedules, bookings]);
+
+  // Export Sailing Attendance CSV
+  const handleExportAttendanceCSV = () => {
+    if (sailingAttendanceStats.length === 0) {
+      toast.error("No sailing records found for the current filters.");
+      return;
+    }
+
+    const headers = [
+      "Voyage Date",
+      "Vessel / Dhow",
+      "Meal Session",
+      "Sailing Status",
+      "Booked Passengers",
+      "Onboarded Passengers",
+      "No Shows / Absentees",
+      "Variance (Wasted Plates)",
+      "Attendance Rate (%)"
+    ];
+
+    const rows = sailingAttendanceStats.map((s) => [
+      s.date,
+      s.dhowName,
+      s.mealType,
+      s.status.toUpperCase(),
+      s.bookedPax,
+      s.onboardedPax,
+      s.noShowPax,
+      s.plateVariance,
+      s.attendanceRate.toFixed(1)
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(e => e.map(val => `"${val}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Sailing_Attendance_Report_${new Date().toISOString().substring(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Attendance report CSV downloaded successfully!");
+  };
+
   const clearFilters = () => {
     setStartDate("");
     setEndDate("");
@@ -261,10 +352,10 @@ export default function ManagerReportsPage() {
         </div>
 
         <button
-          onClick={handleExportCSV}
+          onClick={activeTab === "bookings" ? handleExportCSV : handleExportAttendanceCSV}
           className="flex items-center gap-2 px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all shadow-sm"
         >
-          <Download className="w-4 h-4" /> Export Operations Log (CSV)
+          <Download className="w-4 h-4" /> {activeTab === "bookings" ? "Export Operations Log (CSV)" : "Export Sailing Attendance (CSV)"}
         </button>
       </div>
 
@@ -471,109 +562,208 @@ export default function ManagerReportsPage() {
         </div>
       </div>
 
-      {/* DETAILED BOOKING LOG */}
-      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="space-y-1">
-            <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
-              Detailed Passenger Booking Records ({displayedBookings.length})
-              {selectedPaymentMethodFilter && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
-                  Filtered by: {selectedPaymentMethodFilter.replace("_", " ")}
-                </span>
-              )}
-            </h2>
-            {selectedPaymentMethodFilter && (
-              <p className="text-[11px] text-slate-400 font-semibold">
-                Showing only reservations with completed payments matching the clicked method.
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {selectedPaymentMethodFilter && (
-              <button
-                onClick={() => setSelectedPaymentMethodFilter("")}
-                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-colors mr-2"
-              >
-                Show All Methods
-              </button>
-            )}
-            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Historical Logs</span>
-          </div>
-        </div>
-
-        {loadingBookings ? (
-          <div className="p-12 text-center text-slate-400 text-sm font-semibold flex items-center justify-center gap-2">
-            <span className="w-5 h-5 border-2 border-slate-300 border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
-            Loading operational tables...
-          </div>
-        ) : displayedBookings.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-sm font-medium">
-            No bookings match the selected filter criteria.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="px-6 py-3.5">Reference</th>
-                  <th className="px-6 py-3.5">Guest & Contact</th>
-                  <th className="px-6 py-3.5">Voyage Date</th>
-                  <th className="px-6 py-3.5 text-center">Pax</th>
-                  <th className="px-6 py-3.5">Total Cost</th>
-                  <th className="px-6 py-3.5">Discount</th>
-                  <th className="px-6 py-3.5">Paid</th>
-                  <th className="px-6 py-3.5">Balance</th>
-                  <th className="px-6 py-3.5">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {displayedBookings.map((b) => {
-                  const sched = schedules.find((s) => s.id === b.schedule);
-                  return (
-                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-slate-900 text-xs">{b.reference}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-800">{b.booked_by_name || "Walk-In Guest"}</div>
-                        <div className="text-[10px] text-slate-400">{b.booked_by_email || "no-email@walkin.com"}</div>
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-slate-500 text-xs">
-                        {b.schedule_date || "—"}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-800 text-center">{b.party_size}</td>
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 font-semibold text-rose-700">
-                        {parseFloat((b.discount_amount || 0).toString()) > 0 
-                          ? `KES ${parseFloat((b.discount_amount || 0).toString()).toLocaleString()}` 
-                          : "—"}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-emerald-700">
-                        KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-amber-700">
-                        KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          b.status === "confirmed" || b.status === "completed"
-                            ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
-                            : b.status === "cancelled"
-                            ? "bg-rose-50 text-rose-800 border border-rose-100"
-                            : "bg-amber-50 text-amber-800 border border-amber-100"
-                        }`}>
-                          {b.status_display || b.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Tab Selectors */}
+      <div className="flex border-b border-slate-200 gap-1 sm:gap-2">
+        <button
+          onClick={() => setActiveTab("bookings")}
+          className={`px-4 sm:px-6 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+            activeTab === "bookings"
+              ? "border-amber-600 text-amber-700"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Detailed Bookings
+        </button>
+        <button
+          onClick={() => setActiveTab("attendance")}
+          className={`px-4 sm:px-6 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+            activeTab === "attendance"
+              ? "border-amber-600 text-amber-700"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Sailing Attendance & Food Cost
+        </button>
       </div>
+
+      {activeTab === "bookings" ? (
+        /* DETAILED BOOKING LOG */
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden animate-fadeIn">
+          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="space-y-1">
+              <h2 className="font-extrabold text-slate-800 text-base flex items-center gap-2">
+                Detailed Passenger Booking Records ({displayedBookings.length})
+                {selectedPaymentMethodFilter && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                    Filtered by: {selectedPaymentMethodFilter.replace("_", " ")}
+                  </span>
+                )}
+              </h2>
+              {selectedPaymentMethodFilter && (
+                <p className="text-[11px] text-slate-400 font-semibold">
+                  Showing only reservations with completed payments matching the clicked method.
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedPaymentMethodFilter && (
+                <button
+                  onClick={() => setSelectedPaymentMethodFilter("")}
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 transition-colors mr-2"
+                >
+                  Show All Methods
+                </button>
+              )}
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Historical Logs</span>
+            </div>
+          </div>
+
+          {loadingBookings ? (
+            <div className="p-12 text-center text-slate-400 text-sm font-semibold flex items-center justify-center gap-2">
+              <span className="w-5 h-5 border-2 border-slate-300 border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+              Loading operational tables...
+            </div>
+          ) : displayedBookings.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 text-sm font-medium">
+              No bookings match the selected filter criteria.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-3.5">Reference</th>
+                    <th className="px-6 py-3.5">Guest & Contact</th>
+                    <th className="px-6 py-3.5">Voyage Date</th>
+                    <th className="px-6 py-3.5 text-center">Pax</th>
+                    <th className="px-6 py-3.5">Total Cost</th>
+                    <th className="px-6 py-3.5">Discount</th>
+                    <th className="px-6 py-3.5">Paid</th>
+                    <th className="px-6 py-3.5">Balance</th>
+                    <th className="px-6 py-3.5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayedBookings.map((b) => {
+                    const sched = schedules.find((s) => s.id === b.schedule);
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-4 font-mono font-bold text-slate-900 text-xs">{b.reference}</td>
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-800">{b.booked_by_name || "Walk-In Guest"}</div>
+                          <div className="text-[10px] text-slate-400">{b.booked_by_email || "no-email@walkin.com"}</div>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-500 text-xs">
+                          {b.schedule_date || "—"}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-slate-800 text-center">{b.party_size}</td>
+                        <td className="px-6 py-4 font-bold text-slate-800">
+                          KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-rose-700">
+                          {parseFloat((b.discount_amount || 0).toString()) > 0 
+                            ? `KES ${parseFloat((b.discount_amount || 0).toString()).toLocaleString()}` 
+                            : "—"}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-emerald-700">
+                          KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 font-bold text-amber-700">
+                          KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            b.status === "confirmed" || b.status === "completed"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
+                              : b.status === "cancelled"
+                              ? "bg-rose-50 text-rose-800 border border-rose-100"
+                              : "bg-amber-50 text-amber-800 border border-amber-100"
+                          }`}>
+                            {b.status_display || b.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* SAILING ATTENDANCE LOG */
+        <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden animate-fadeIn">
+          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="space-y-1">
+              <h2 className="font-extrabold text-slate-800 text-base">
+                Sailing Attendance & Food Cost Variance ({sailingAttendanceStats.length})
+              </h2>
+              <p className="text-[11px] text-slate-400 font-semibold">
+                Variance tracks prepared plates not consumed (Booked Pax minus Checked-in Pax) on completed voyages.
+              </p>
+            </div>
+            <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Attendance Logs</span>
+          </div>
+
+          {loadingSchedules || loadingBookings ? (
+            <div className="p-12 text-center text-slate-400 text-sm font-semibold flex items-center justify-center gap-2">
+              <span className="w-5 h-5 border-2 border-slate-300 border-t-transparent animate-spin" style={{ borderRadius: "50%" }} />
+              Loading sailing reports...
+            </div>
+          ) : sailingAttendanceStats.length === 0 ? (
+            <div className="p-12 text-center text-slate-400 text-sm font-medium">
+              No sailing voyages found for the selected criteria.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-slate-600">
+                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-3.5">Voyage Details</th>
+                    <th className="px-6 py-3.5">Vessel</th>
+                    <th className="px-6 py-3.5">Meal Session</th>
+                    <th className="px-6 py-3.5 text-center">Booked Pax</th>
+                    <th className="px-6 py-3.5 text-center">Onboarded Pax</th>
+                    <th className="px-6 py-3.5 text-center">No Shows</th>
+                    <th className="px-6 py-3.5 text-center bg-rose-50/50">Wasted Plates (Variance)</th>
+                    <th className="px-6 py-3.5 text-right">Attendance Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {sailingAttendanceStats.map((s) => {
+                    const isCompleted = s.status === "completed";
+                    return (
+                      <tr key={s.scheduleId} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="font-bold text-slate-900">{s.date}</div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">Ref: {s.reference}</div>
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-slate-800">{s.dhowName}</td>
+                        <td className="px-6 py-4">
+                          <span className="font-medium text-slate-600 text-xs">{s.mealType}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-800">{s.bookedPax}</td>
+                        <td className="px-6 py-4 text-center font-bold text-emerald-700">{s.onboardedPax}</td>
+                        <td className="px-6 py-4 text-center font-semibold text-rose-600">{s.noShowPax}</td>
+                        <td className={`px-6 py-4 text-center font-extrabold bg-rose-50/20 ${s.plateVariance > 0 ? "text-amber-600" : "text-slate-400"}`}>
+                          {isCompleted ? (
+                            s.plateVariance > 0 ? `+${s.plateVariance} plates` : "0 (Perfect match)"
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-semibold italic">Sailing Active</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right font-black text-slate-800">
+                          {s.attendanceRate.toFixed(1)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

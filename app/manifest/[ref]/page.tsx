@@ -8,6 +8,7 @@ import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/boo
 import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil, Plus } from "lucide-react";
 import toast from "react-hot-toast";
 import { SupervisorBookingModal } from "@/components/dhow-manager/SupervisorBookingModal";
+import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 interface ManifestGuest {
   id: string;
@@ -55,8 +56,9 @@ export default function PublicManifestPage() {
   const { ref } = useParams() as { ref: string };
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const isAuthenticated = !!session?.user;
+  const canModify = isAuthenticated || !!token;
 
   const [data, setData] = useState<PublicManifestResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,10 @@ export default function PublicManifestPage() {
   
   // Supervisor walk-in booking state
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
+
+  // Cancellation modal state
+  const [cancelTargetBooking, setCancelTargetBooking] = useState<ManifestBooking | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
 
   // Local state to keep track of checked-in guests at the dock
@@ -97,10 +103,12 @@ export default function PublicManifestPage() {
 
   const fetchManifest = useCallback(async (isInitial = false, showLoader = false) => {
     if (!ref) return;
+    if (sessionStatus === "loading") return;
     if (showLoader) setSyncing(true);
     try {
       const res = await getPublicManifest(ref, token, session?.user?.token);
       applyManifestData(res, isInitial);
+      setError("");
     } catch (err) {
       if (isInitial) {
         setError("Failed to load sailing manifest. The access token may be invalid.");
@@ -109,16 +117,17 @@ export default function PublicManifestPage() {
       if (isInitial) setLoading(false);
       if (showLoader) setSyncing(false);
     }
-  }, [ref, token, applyManifestData]);
+  }, [ref, token, session?.user?.token, sessionStatus, applyManifestData]);
 
   // Initial fetch + 10-second auto-polling
   useEffect(() => {
+    if (sessionStatus === "loading") return;
     fetchManifest(true);
     pollingRef.current = setInterval(() => fetchManifest(false), 10000);
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [fetchManifest]);
+  }, [fetchManifest, sessionStatus]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -137,8 +146,11 @@ export default function PublicManifestPage() {
       [guestId]: !isBoarded,
     }));
 
+    const activeToken = session?.user?.token || token;
+    const isManifest = !session?.user?.token;
+
     try {
-      await updateBookingGuest(guestId, { status: newStatus }, token, true);
+      await updateBookingGuest(guestId, { status: newStatus }, activeToken, isManifest);
       toast.success(isBoarded ? "Marked as absent" : "Checked in passenger successfully!");
     } catch (err) {
       // Revert optimistic update on failure
@@ -153,8 +165,10 @@ export default function PublicManifestPage() {
   const handleNoShow = async (booking: ManifestBooking) => {
     if (booking.status === "no_show") return;
     setActionLoading((prev) => ({ ...prev, [`noshow-${booking.reference}`]: true }));
+    const activeToken = session?.user?.token || token;
+    const isManifest = !session?.user?.token;
     try {
-      await noShowBooking(booking.reference, token, true);
+      await noShowBooking(booking.reference, activeToken, isManifest);
       toast.success(`Booking ${booking.reference} marked as No Show`);
       fetchManifest(false, false);
     } catch (err) {
@@ -164,18 +178,20 @@ export default function PublicManifestPage() {
     }
   };
 
-  const handleCancel = async (booking: ManifestBooking) => {
-    if (booking.status === "cancelled") return;
-    if (!confirm(`Cancel booking ${booking.reference} for ${booking.booked_by_name}? This cannot be undone.`)) return;
-    setActionLoading((prev) => ({ ...prev, [`cancel-${booking.reference}`]: true }));
+  const executeCancel = async () => {
+    if (!cancelTargetBooking) return;
+    setIsCancelling(true);
+    const activeToken = session?.user?.token || token;
+    const isManifest = !session?.user?.token;
     try {
-      await cancelBooking(booking.reference, token, true);
-      toast.success(`Booking ${booking.reference} cancelled`);
+      await cancelBooking(cancelTargetBooking.reference, activeToken, isManifest);
+      toast.success(`Booking ${cancelTargetBooking.reference} cancelled`);
+      setCancelTargetBooking(null);
       fetchManifest(false, false);
     } catch (err) {
       toast.error("Failed to cancel booking.");
     } finally {
-      setActionLoading((prev) => ({ ...prev, [`cancel-${booking.reference}`]: false }));
+      setIsCancelling(false);
     }
   };
 
@@ -400,7 +416,7 @@ export default function PublicManifestPage() {
                     </div>
 
                     {/* No Show & Cancel Actions */}
-                    {isAuthenticated && !isCancelled && (
+                    {canModify && !isCancelled && (
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleNoShow(b)}
@@ -416,12 +432,12 @@ export default function PublicManifestPage() {
                           No Show
                         </button>
                         <button
-                          onClick={() => handleCancel(b)}
-                          disabled={cancelLoading || isCancelled}
+                          onClick={() => setCancelTargetBooking(b)}
+                          disabled={isCancelling || isCancelled}
                           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Cancel this booking"
                         >
-                          {cancelLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {isCancelling && cancelTargetBooking?.id === b.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
                           Cancel
                         </button>
                       </div>
@@ -463,13 +479,13 @@ export default function PublicManifestPage() {
                             <div
                               key={g.id}
                               onClick={() => {
-                                if (isAuthenticated && !isEditing) handleToggleBoarding(g.id);
+                                if (canModify && !isEditing) handleToggleBoarding(g.id);
                               }}
                               className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all group relative ${
                                 isEditing ? "bg-white border-amber-300 ring-2 ring-amber-500/10 cursor-default" :
                                 isBoarded
-                                  ? `bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold ${isAuthenticated ? "cursor-pointer" : "cursor-default"}`
-                                  : `bg-white border-slate-200 text-slate-700 font-semibold ${isAuthenticated ? "cursor-pointer" : "cursor-default"}`
+                                  ? `bg-emerald-50/60 border-emerald-200 text-emerald-950 font-bold ${canModify ? "cursor-pointer" : "cursor-default"}`
+                                  : `bg-white border-slate-200 text-slate-700 font-semibold ${canModify ? "cursor-pointer" : "cursor-default"}`
                               }`}
                             >
                               <div className="flex-1 min-w-0 pr-2">
@@ -499,7 +515,9 @@ export default function PublicManifestPage() {
                                             return;
                                           }
                                           try {
-                                            await updateBookingGuest(g.id, { first_name: editFirstName.trim(), last_name: editLastName.trim() }, token, true);
+                                            const activeToken = session?.user?.token || token;
+                                            const isManifest = !session?.user?.token;
+                                            await updateBookingGuest(g.id, { first_name: editFirstName.trim(), last_name: editLastName.trim() }, activeToken, isManifest);
                                             toast.success("Guest renamed successfully!");
                                             setEditingGuestId(null);
                                             fetchManifest(false, false);
@@ -523,7 +541,7 @@ export default function PublicManifestPage() {
                                   <>
                                     <div className="text-xs truncate flex items-center gap-1.5">
                                       <span>{g.first_name} {g.last_name}</span>
-                                      {isAuthenticated && (
+                                      {canModify && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -544,16 +562,16 @@ export default function PublicManifestPage() {
                               </div>
                               
                               {!isEditing && (
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                  isBoarded 
-                                    ? "bg-emerald-600 text-white" 
-                                    : isAuthenticated 
-                                      ? "bg-slate-100 text-transparent group-hover:bg-slate-200" 
-                                      : "bg-slate-100 text-transparent"
-                                }`}>
-                                  <Check className="w-3.5 h-3.5" />
-                                </div>
-                              )}
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                    isBoarded 
+                                      ? "bg-emerald-600 text-white" 
+                                      : canModify 
+                                        ? "bg-slate-100 text-transparent group-hover:bg-slate-200" 
+                                        : "bg-slate-100 text-transparent"
+                                  }`}>
+                                    <Check className="w-3.5 h-3.5" />
+                                  </div>
+                                )}
                             </div>
                           );
                         })}
@@ -581,6 +599,18 @@ export default function PublicManifestPage() {
         schedule={schedule}
         manifestToken={token}
         onSuccess={() => fetchManifest(false, true)}
+      />
+
+      <ConfirmationModal
+        isOpen={cancelTargetBooking !== null}
+        title="Cancel Booking"
+        message={`Are you sure you want to cancel booking ${cancelTargetBooking?.reference} for ${cancelTargetBooking?.booked_by_name}? This action will permanently release table allocations.`}
+        confirmText="Cancel Booking"
+        cancelText="Go Back"
+        type="danger"
+        isLoading={isCancelling}
+        onConfirm={executeCancel}
+        onCancel={() => setCancelTargetBooking(null)}
       />
     </div>
   );

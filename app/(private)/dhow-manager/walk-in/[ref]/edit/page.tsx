@@ -25,14 +25,15 @@ export default function EditBookingPage() {
     if (!ref || !token) return;
 
     setLoading(true);
-    // Fetch both booking and payments concurrently
-    Promise.all([
-      getBookingDetail(ref, { headers: { Authorization: `Token ${token}` } }),
-      getPayments({ headers: { Authorization: `Token ${token}` } }, { booking: ref })
-    ])
-      .then(([bookingRes, paymentsRes]) => {
+    getBookingDetail(ref, { headers: { Authorization: `Token ${token}` } })
+      .then((bookingRes) => {
         setBooking(bookingRes);
-        // Find if there's a completed payment
+        return getPayments(
+          { headers: { Authorization: `Token ${token}` } },
+          { booking: bookingRes.id }
+        );
+      })
+      .then((paymentsRes) => {
         const payments = paymentsRes.results || [];
         const completed = payments.find((p: any) => p.status === "completed");
         setInitialPayment(completed || null);

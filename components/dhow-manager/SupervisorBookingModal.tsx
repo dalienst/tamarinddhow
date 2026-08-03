@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import axios from "axios";
+import { apiActions as axios } from "@/tools/axios";
 import { 
   X, 
   User, 

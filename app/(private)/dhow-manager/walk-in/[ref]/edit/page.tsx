@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getBookingDetail } from "@/services/bookings";
+import { getPayments } from "@/services/payments";
 import { Edit3, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import EditWalkInBookingForm from "@/forms/walk-in/EditWalkInBookingForm";
@@ -27,10 +28,7 @@ export default function EditBookingPage() {
     // Fetch both booking and payments concurrently
     Promise.all([
       getBookingDetail(ref, { headers: { Authorization: `Token ${token}` } }),
-      fetch(`/api/v1/payments/?booking=${ref}`, { headers: { Authorization: `Token ${token}` } }).then(res => {
-        if (!res.ok) throw new Error("Failed to fetch payments");
-        return res.json();
-      })
+      getPayments({ headers: { Authorization: `Token ${token}` } }, { booking: ref })
     ])
       .then(([bookingRes, paymentsRes]) => {
         setBooking(bookingRes);

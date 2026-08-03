@@ -6,7 +6,7 @@ import { createPayment } from "@/services/payments";
 import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign, Plus, Minus, ShoppingBag } from "lucide-react";
 import toast from "react-hot-toast";
-import axios from "axios";
+import { apiActions as axios } from "@/tools/axios";
 import { Booking } from "@/types/booking";
 
 interface WalkInBookingFormProps {

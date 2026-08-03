@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { updateBooking } from "@/services/bookings";
+import { updateBooking, deleteBooking } from "@/services/bookings";
 import { useFetchSchedules, useFetchAddOns } from "@/hooks/vessels/actions";
 import { UserPlus, DollarSign, Plus, Minus, ShoppingBag, Trash2, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import axios from "axios";
+import { apiActions as axios } from "@/tools/axios";
 import { Booking } from "@/types/booking";
 import { useRouter } from "next/navigation";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
@@ -149,10 +149,7 @@ export default function EditWalkInBookingForm({ token, onSuccess, bookingToEdit,
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      await fetch(`/api/v1/bookings/${bookingToEdit.reference}/`, {
-        method: "DELETE",
-        headers: { Authorization: `Token ${token}` }
-      });
+      await deleteBooking(bookingToEdit.reference, token);
       toast.success("Booking deleted successfully.");
       router.push("/dhow-manager/walk-in");
     } catch (err) {

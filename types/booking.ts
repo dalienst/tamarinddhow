@@ -48,6 +48,7 @@ export interface Booking {
   outstanding_balance?: string | number;
   booking_addons?: BookingAddOn[];
   addons?: { addon: string; quantity: number; unit_price?: number }[];
+  payments?: { amount: number; payment_method: string; ref: string }[];
   check_in_status?: CheckInStatus;
   booking_guests?: BookingGuest[];
   primary_guest_name?: string;

@@ -217,13 +217,22 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                     <div className="text-[10px] text-slate-400 font-mono">{b.reference}</div>
                     {b.booked_by_email && <div className="text-[10px] text-slate-500">{b.booked_by_email}</div>}
                   </div>
-                  <div className="flex flex-col items-end gap-1.5">
+                  <div className="flex flex-col items-end gap-1">
                     <StatusBadge status={b.status} type="booking" />
-                    {Number(b.outstanding_balance) > 0 && (
-                      <span className="text-[9px] bg-rose-100 border border-rose-200 text-rose-800 font-extrabold px-1.5 py-0.5 rounded shadow-sm">
-                        BAL: KES {Number(b.outstanding_balance).toLocaleString()}
-                      </span>
-                    )}
+                    <div className="text-[10px] text-slate-500 text-right font-medium space-y-0.5 mt-1">
+                      <div>Total: KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}</div>
+                      {parseFloat((b.total_paid || 0).toString()) > 0 && (
+                        <div className="text-emerald-700 font-bold">Paid: KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}</div>
+                      )}
+                      {parseFloat((b.outstanding_balance || 0).toString()) > 0 && (
+                        <div className="text-rose-700 font-extrabold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100">
+                          Bal: KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}
+                        </div>
+                      )}
+                      {parseFloat((b.discount_amount || 0).toString()) > 0 && (
+                        <div className="text-rose-600 font-medium">Disc: -KES {parseFloat((b.discount_amount || 0).toString()).toLocaleString()}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -254,6 +263,20 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                 {/* Special requests */}
                 {b.special_requests && (
                   <div className="text-[11px] text-slate-500 italic">"{b.special_requests}"</div>
+                )}
+
+                {/* Payments */}
+                {b.payments && b.payments.length > 0 && (
+                  <div className="space-y-1">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Payments:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {b.payments.map((p, idx) => (
+                        <span key={idx} className="text-[9px] bg-emerald-50 border border-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-mono font-semibold">
+                          {p.payment_method}: {p.ref} (KES {p.amount.toLocaleString()})
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Table seating */}
@@ -558,12 +581,33 @@ export const DigitalCheckInList: React.FC<DigitalCheckInListProps> = ({
                         {b.special_requests || "None"}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex flex-col items-start gap-1.5">
-                          <StatusBadge status={b.status} type="booking" />
-                          {Number(b.outstanding_balance) > 0 && (
-                            <span className="text-[10px] bg-rose-100 border border-rose-200 text-rose-800 font-extrabold px-2 py-0.5 rounded shadow-sm inline-flex">
-                              Balance: KES {Number(b.outstanding_balance).toLocaleString()}
-                            </span>
+                        <div className="space-y-1.5">
+                          <div>
+                            <StatusBadge status={b.status} type="booking" />
+                          </div>
+                          <div className="text-[11px] text-slate-500 font-semibold space-y-0.5 leading-tight">
+                            <div>Total: KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}</div>
+                            {parseFloat((b.total_paid || 0).toString()) > 0 && (
+                              <div className="text-emerald-700 font-bold">Paid: KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}</div>
+                            )}
+                            {parseFloat((b.outstanding_balance || 0).toString()) > 0 && (
+                              <div className="text-rose-700 font-extrabold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 inline-block">
+                                Bal: KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}
+                              </div>
+                            )}
+                            {parseFloat((b.discount_amount || 0).toString()) > 0 && (
+                              <div className="text-rose-600 font-medium">Disc: -KES {parseFloat((b.discount_amount || 0).toString()).toLocaleString()}</div>
+                            )}
+                          </div>
+                          {b.payments && b.payments.length > 0 && (
+                            <div className="space-y-0.5 border-t border-slate-100 pt-1 mt-1 max-w-[180px]">
+                              <span className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider block">Tx References:</span>
+                              {b.payments.map((p, idx) => (
+                                <div key={idx} className="text-[9px] text-slate-600 font-medium truncate" title={`${p.payment_method}: ${p.ref}`}>
+                                  {p.payment_method}: <span className="font-mono font-bold text-slate-700">{p.ref}</span> (KES {p.amount.toLocaleString()})
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </td>

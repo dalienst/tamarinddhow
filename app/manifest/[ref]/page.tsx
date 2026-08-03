@@ -32,6 +32,11 @@ interface ManifestBooking {
   status: string;
   booking_guests: ManifestGuest[];
   booking_addons?: { addon_name: string; quantity: number; total_price: number }[];
+  total_amount?: string | number;
+  total_paid?: string | number;
+  outstanding_balance?: string | number;
+  discount_amount?: string | number;
+  payments?: { amount: number; payment_method: string; ref: string }[];
 }
 
 interface ScheduleData {
@@ -413,6 +418,42 @@ export default function PublicManifestPage() {
                       <p className="text-xs text-slate-500 font-medium">
                         Party of {b.party_size} ({b.adult_count} Adults, {b.child_count} Kids)
                       </p>
+                      {/* Payment Details */}
+                      <div className="text-[11px] text-slate-500 font-medium space-y-1 mt-2.5 bg-slate-50 border border-slate-100 p-3 rounded-2xl max-w-sm">
+                        <div className="flex justify-between items-center">
+                          <span>Total Expected:</span>
+                          <span className="font-bold text-slate-800">KES {parseFloat((b.total_amount || 0).toString()).toLocaleString()}</span>
+                        </div>
+                        {parseFloat((b.total_paid || 0).toString()) > 0 && (
+                          <div className="flex justify-between items-center text-emerald-700">
+                            <span>Total Paid:</span>
+                            <span className="font-extrabold">KES {parseFloat((b.total_paid || 0).toString()).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {parseFloat((b.outstanding_balance || 0).toString()) > 0 && (
+                          <div className="flex justify-between items-center text-amber-700 font-bold">
+                            <span>Outstanding Balance:</span>
+                            <span className="bg-amber-50 px-2 py-0.5 rounded border border-amber-100">KES {parseFloat((b.outstanding_balance || 0).toString()).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {parseFloat((b.discount_amount || 0).toString()) > 0 && (
+                          <div className="flex justify-between items-center text-rose-600">
+                            <span>Discount Given:</span>
+                            <span>-KES {parseFloat((b.discount_amount || 0).toString()).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {b.payments && b.payments.length > 0 && (
+                          <div className="border-t border-slate-200/60 pt-1.5 mt-1.5 space-y-1">
+                            <span className="text-[9px] text-slate-400 font-bold uppercase block tracking-wider">Completed Transactions:</span>
+                            {b.payments.map((p, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-[10px] text-slate-600 bg-white border border-slate-100 px-2 py-1 rounded-lg">
+                                <span>{p.payment_method}</span>
+                                <span className="font-mono font-bold text-slate-700">{p.ref} (KES {p.amount.toLocaleString()})</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* No Show & Cancel Actions */}

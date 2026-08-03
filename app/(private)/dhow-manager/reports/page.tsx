@@ -16,7 +16,8 @@ export default function ManagerReportsPage() {
   const [selectedPaymentMethodFilter, setSelectedPaymentMethodFilter] = useState("");
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<"bookings" | "attendance">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "attendance" | "analytics">("bookings");
+  const [selectedAnalyticsScheduleId, setSelectedAnalyticsScheduleId] = useState<string>("");
 
 
   // Query Hooks
@@ -79,6 +80,18 @@ export default function ManagerReportsPage() {
       return true;
     });
   }, [schedules, startDate, endDate, selectedDhow]);
+
+  // Auto-select first schedule for analytics if not set or if it's no longer in the list
+  React.useEffect(() => {
+    if (filteredSchedules.length > 0) {
+      const exists = filteredSchedules.some(s => s.id === selectedAnalyticsScheduleId);
+      if (!exists) {
+        setSelectedAnalyticsScheduleId(filteredSchedules[0].id);
+      }
+    } else {
+      setSelectedAnalyticsScheduleId("");
+    }
+  }, [filteredSchedules, selectedAnalyticsScheduleId]);
 
   // Aggregated Stat Calculations
   const stats = useMemo(() => {
@@ -328,6 +341,100 @@ export default function ManagerReportsPage() {
     document.body.removeChild(link);
     toast.success("Attendance report CSV downloaded successfully!");
   };
+
+  // Voyage-specific granular analytics calculation
+  const selectedSailingAnalytics = useMemo(() => {
+    if (!selectedAnalyticsScheduleId) return null;
+    
+    // Find the schedule details
+    const schedule = schedules.find((s) => s.id === selectedAnalyticsScheduleId);
+    if (!schedule) return null;
+
+    // Filter bookings for this schedule (exclude cancelled)
+    const activeBookings = bookings.filter(
+      (b) => b.schedule === selectedAnalyticsScheduleId && b.status !== "cancelled"
+    );
+
+    // Compute standard metrics
+    const bookedPax = activeBookings.reduce((sum, b) => sum + b.party_size, 0);
+    const adultCount = activeBookings.reduce((sum, b) => sum + (b.adult_count || b.party_size), 0);
+    const childCount = activeBookings.reduce((sum, b) => sum + (b.child_count || 0), 0);
+
+    let onboardedPax = 0;
+    let noShowPax = 0;
+    let pendingPax = 0;
+
+    activeBookings.forEach((b) => {
+      const guests = b.booking_guests || [];
+      const checkedIn = guests.filter((g) => g.status === "checked_in").length;
+      const noShow = guests.filter((g) => g.status === "no_show").length;
+      const pending = guests.filter((g) => g.status === "pending" || !g.status).length;
+
+      onboardedPax += checkedIn;
+      noShowPax += noShow;
+      pendingPax += pending;
+    });
+
+    const isCompleted = schedule.status === "completed";
+    const finalNoShows = isCompleted ? Math.max(0, bookedPax - onboardedPax) : noShowPax;
+    const finalPending = isCompleted ? 0 : pendingPax;
+
+    // Financials
+    const totalExpected = activeBookings.reduce((sum, b) => sum + parseFloat((b.total_amount || 0).toString()), 0);
+    const totalPaid = activeBookings.reduce((sum, b) => sum + parseFloat((b.total_paid || 0).toString()), 0);
+    const totalOutstanding = activeBookings.reduce((sum, b) => sum + parseFloat((b.outstanding_balance || 0).toString()), 0);
+
+    // Occupancy
+    const dhow = dhows.find((d) => d.id === schedule.dhow);
+    const capacity = dhow?.total_capacity || 60;
+    const occupancyRate = capacity > 0 ? (bookedPax / capacity) * 100 : 0;
+    const checkinRate = bookedPax > 0 ? (onboardedPax / bookedPax) * 100 : 0;
+
+    // Menu packages composition
+    const packageMap: Record<string, number> = {};
+    activeBookings.forEach((b) => {
+      const pkg = b.package_name || "Standard Menu";
+      packageMap[pkg] = (packageMap[pkg] || 0) + b.party_size;
+    });
+    const packages = Object.entries(packageMap).map(([name, count]) => ({ name, count }));
+
+    // Addons composition
+    const addonMap: Record<string, { count: number; value: number }> = {};
+    activeBookings.forEach((b) => {
+      (b.booking_addons || []).forEach((ba) => {
+        const name = ba.addon_name || "Addon";
+        const val = parseFloat((ba.total_price || 0).toString());
+        if (!addonMap[name]) {
+          addonMap[name] = { count: 0, value: 0 };
+        }
+        addonMap[name].count += ba.quantity;
+        addonMap[name].value += val;
+      });
+    });
+    const addons = Object.entries(addonMap).map(([name, data]) => ({
+      name,
+      count: data.count,
+      value: data.value,
+    }));
+
+    return {
+      schedule,
+      bookedPax,
+      adultCount,
+      childCount,
+      onboardedPax,
+      noShowPax: finalNoShows,
+      pendingPax: finalPending,
+      totalExpected,
+      totalPaid,
+      totalOutstanding,
+      capacity,
+      occupancyRate,
+      checkinRate,
+      packages,
+      addons,
+    };
+  }, [selectedAnalyticsScheduleId, schedules, bookings, dhows]);
 
   const clearFilters = () => {
     setStartDate("");
@@ -584,6 +691,16 @@ export default function ManagerReportsPage() {
         >
           Sailing Attendance & Food Cost
         </button>
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`px-4 sm:px-6 py-3 text-xs sm:text-sm font-bold border-b-2 transition-all ${
+            activeTab === "analytics"
+              ? "border-amber-600 text-amber-700"
+              : "border-transparent text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          Sailing List Analytics
+        </button>
       </div>
 
       {activeTab === "bookings" ? (
@@ -690,7 +807,7 @@ export default function ManagerReportsPage() {
             </div>
           )}
         </div>
-      ) : (
+      ) : activeTab === "attendance" ? (
         /* SAILING ATTENDANCE LOG */
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden animate-fadeIn">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -761,6 +878,164 @@ export default function ManagerReportsPage() {
                 </tbody>
               </table>
             </div>
+          )}
+        </div>
+      ) : (
+        /* SAILING LIST ANALYTICS */
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div className="space-y-1">
+              <h2 className="font-extrabold text-slate-800 text-base">Sailing Manifest Logistics & Insights</h2>
+              <p className="text-[11px] text-slate-400 font-semibold">Select a voyage to analyze its check-in ratios, prepared dining menus, and extra add-ons.</p>
+            </div>
+            <div className="w-full sm:w-72">
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Select Voyage</label>
+              {filteredSchedules.length === 0 ? (
+                <div className="text-xs text-rose-500 font-bold">No active voyages found.</div>
+              ) : (
+                <select
+                  value={selectedAnalyticsScheduleId}
+                  onChange={(e) => setSelectedAnalyticsScheduleId(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white focus:ring-2 focus:ring-amber-500/20"
+                >
+                  {filteredSchedules.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.date} • {s.dhow_name} ({s.meal_type_display})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
+          {selectedSailingAnalytics ? (
+            <div className="space-y-6">
+              {/* Sub Stats Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1 shadow-sm">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Capacity Occupancy</span>
+                  <span className="text-lg font-black text-slate-900">
+                    {selectedSailingAnalytics.bookedPax} / {selectedSailingAnalytics.capacity} seats
+                  </span>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                    <div className="bg-amber-600 h-1.5 rounded-full" style={{ width: `${Math.min(100, selectedSailingAnalytics.occupancyRate)}%` }} />
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-semibold block mt-1">
+                    {selectedSailingAnalytics.occupancyRate.toFixed(1)}% Capacity Filled
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1 shadow-sm">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Attendance Rate</span>
+                  <span className="text-lg font-black text-emerald-800">
+                    {selectedSailingAnalytics.onboardedPax} / {selectedSailingAnalytics.bookedPax} onboarded
+                  </span>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2">
+                    <div className="bg-emerald-600 h-1.5 rounded-full" style={{ width: `${Math.min(100, selectedSailingAnalytics.checkinRate)}%` }} />
+                  </div>
+                  <span className="text-[10px] text-emerald-600 font-semibold block mt-1">
+                    {selectedSailingAnalytics.checkinRate.toFixed(1)}% Boarded
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1 shadow-sm">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Guest Composition</span>
+                  <span className="text-lg font-black text-slate-900">
+                    {selectedSailingAnalytics.bookedPax} total guests
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold block mt-3">
+                    {selectedSailingAnalytics.adultCount} Adults • {selectedSailingAnalytics.childCount} Children
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 space-y-1 shadow-sm">
+                  <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sailing Collections</span>
+                  <span className="text-lg font-black text-emerald-800">
+                    KES {selectedSailingAnalytics.totalPaid.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-bold block mt-3">
+                    KES {selectedSailingAnalytics.totalOutstanding.toLocaleString()} Outstanding (KES {selectedSailingAnalytics.totalExpected.toLocaleString()} Expected)
+                  </span>
+                </div>
+              </div>
+
+              {/* Detailed breakdown grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                {/* Prepared Plates / Dining Menu counts */}
+                <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/30 space-y-3 shadow-sm">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                    Dining Plates Required
+                  </h3>
+                  {selectedSailingAnalytics.packages.length === 0 ? (
+                    <div className="text-slate-400 text-xs font-semibold py-8 text-center">No plate orders recorded.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedSailingAnalytics.packages.map((pkg) => (
+                        <div key={pkg.name} className="flex items-center justify-between text-xs py-1">
+                          <span className="font-semibold text-slate-600">{pkg.name}</span>
+                          <span className="font-extrabold text-slate-800 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">
+                            {pkg.count} plates
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Custom Add-ons */}
+                <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/30 space-y-3 shadow-sm">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                    Custom Add-ons Ordered
+                  </h3>
+                  {selectedSailingAnalytics.addons.length === 0 ? (
+                    <div className="text-slate-400 text-xs font-semibold py-8 text-center">No extra add-ons ordered.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedSailingAnalytics.addons.map((add) => (
+                        <div key={add.name} className="flex items-center justify-between text-xs py-1">
+                          <div className="space-y-0.5">
+                            <span className="font-semibold text-slate-600">{add.name}</span>
+                            <span className="text-[10px] text-slate-400 block font-semibold">Value: KES {add.value.toLocaleString()}</span>
+                          </div>
+                          <span className="font-extrabold text-slate-800 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm">
+                            x{add.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Attendance & Check-in Checklist composition */}
+                <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50/30 space-y-3 shadow-sm">
+                  <h3 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider border-b border-slate-100 pb-2">
+                    Check-in Attendance Breakdown
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-emerald-800">Boarded / Checked-in</span>
+                      <span className="font-extrabold text-emerald-900 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                        {selectedSailingAnalytics.onboardedPax} guests
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-rose-700">No Shows / Absentees</span>
+                      <span className="font-extrabold text-rose-900 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
+                        {selectedSailingAnalytics.noShowPax} guests
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-600">Pending Attendance</span>
+                      <span className="font-extrabold text-slate-800 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
+                        {selectedSailingAnalytics.pendingPax} guests
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-slate-400 text-xs font-semibold">No voyage selected or no data available.</div>
           )}
         </div>
       )}

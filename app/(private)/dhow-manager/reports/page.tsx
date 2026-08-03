@@ -81,12 +81,19 @@ export default function ManagerReportsPage() {
     });
   }, [schedules, startDate, endDate, selectedDhow]);
 
-  // Auto-select first schedule for analytics if not set or if it's no longer in the list
+  // Auto-select schedule for analytics: default to the last completed voyage, or the latest overall voyage
   React.useEffect(() => {
     if (filteredSchedules.length > 0) {
       const exists = filteredSchedules.some(s => s.id === selectedAnalyticsScheduleId);
       if (!exists) {
-        setSelectedAnalyticsScheduleId(filteredSchedules[0].id);
+        const completedSchedules = filteredSchedules.filter(s => s.status === "completed");
+        if (completedSchedules.length > 0) {
+          const sortedCompleted = [...completedSchedules].sort((a, b) => b.date.localeCompare(a.date));
+          setSelectedAnalyticsScheduleId(sortedCompleted[0].id);
+        } else {
+          const sortedAll = [...filteredSchedules].sort((a, b) => b.date.localeCompare(a.date));
+          setSelectedAnalyticsScheduleId(sortedAll[0].id);
+        }
       }
     } else {
       setSelectedAnalyticsScheduleId("");

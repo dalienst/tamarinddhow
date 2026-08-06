@@ -3,13 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   turbopack: {},
   images: {
-    domains: ["res.cloudinary.com"],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
-        // Optional: be more specific if you want (recommended for security)
-        // pathname: "/**",   // allows all paths under the domain
       },
       {
         protocol: "https",

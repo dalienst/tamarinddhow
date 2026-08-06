@@ -28,6 +28,7 @@ interface ManifestBooking {
   adult_count: number;
   child_count: number;
   table_number: string;
+  table_allocation?: string | null;
   special_requests: string;
   status: string;
   booking_guests: ManifestGuest[];

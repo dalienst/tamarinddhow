@@ -55,6 +55,7 @@ export function SupervisorBookingModal({
   
   const [cancellationPreference, setCancellationPreference] = useState<"reschedule" | "refund" | "confirmed">("confirmed");
   const [tableRequest, setTableRequest] = useState("");
+  const [tableAllocation, setTableAllocation] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   
   const [paymentState, setPaymentState] = useState<"unpaid" | "cash" | "mpesa" | "visa" | "mastercard" | "staff_card" | "agent_credit" | "waived">("cash");
@@ -96,6 +97,7 @@ export function SupervisorBookingModal({
           booking_type: "walk_in",
           cancellation_preference: cancellationPreference,
           table_request: tableRequest.trim() || undefined,
+          table_allocation: tableAllocation.trim() || undefined,
           special_requests: specialRequests.trim() || undefined,
           status: paymentState === "unpaid" ? "pending" : "confirmed",
           primary_guest_name: guestName.trim(),
@@ -136,6 +138,7 @@ export function SupervisorBookingModal({
       setCustomChildPrice("");
       setCancellationPreference("confirmed");
       setTableRequest("");
+      setTableAllocation("");
       setSpecialRequests("");
       setPaymentState("cash");
       setTransactionRef("");
@@ -355,6 +358,17 @@ export function SupervisorBookingModal({
                     <option value="refund">Refund Money</option>
                     <option value="reschedule">Reschedule Date</option>
                   </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Allocated Table (Optional)</label>
+                  <input
+                    type="text"
+                    disabled={isSaving}
+                    placeholder="e.g. Table 5, T10"
+                    value={tableAllocation}
+                    onChange={(e) => setTableAllocation(e.target.value)}
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-amber-500/20 disabled:opacity-60 bg-amber-50/10 border-amber-200/50 text-slate-800 font-semibold"
+                  />
                 </div>
               </div>
 

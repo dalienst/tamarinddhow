@@ -37,6 +37,7 @@ export interface Booking {
   internal_notes?: string | null;
   table?: string | null;
   table_number?: string | null;
+  table_allocation?: string | null;
   total_amount: string | number;
   custom_price_per_person?: string | number | null;
   custom_price_per_child?: string | number | null;

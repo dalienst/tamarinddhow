@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useFetchScheduleDetail, useFetchTables } from "@/hooks/vessels/actions";
 import { useFetchBookings } from "@/hooks/bookings/actions";
@@ -17,7 +17,9 @@ import { ConfirmationModal } from "@/components/common/ConfirmationModal";
 
 export default function ManifestPage() {
   const params = useParams();
+  const pathname = usePathname();
   const scheduleRef = params.ref as string;
+  const portalBase = pathname.startsWith("/supervisor") ? "/supervisor" : "/dhow-manager";
 
   const { data: session } = useSession();
   const token = session?.user?.token || "";
@@ -197,7 +199,7 @@ export default function ManifestPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start md:items-center gap-3">
           <Link
-            href="/dhow-manager/schedules"
+            href={`${portalBase}/schedules`}
             className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />

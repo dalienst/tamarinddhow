@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { UserPlus, ArrowLeft } from "lucide-react";
 import WalkInBookingForm from "@/forms/walk-in/WalkInBookingForm";
@@ -9,15 +9,17 @@ import BulkWalkInBookingForm from "@/forms/walk-in/BulkWalkInBookingForm";
 
 function RegisterWalkInFormContainer() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const scheduleId = searchParams.get("scheduleId") || undefined;
   const { data: session } = useSession();
   const token = session?.user?.token || "";
+  const portalBase = pathname.startsWith("/supervisor") ? "/supervisor" : "/dhow-manager";
 
   const [formMode, setFormMode] = useState<"single" | "bulk">("single");
 
   const handleSuccess = () => {
-    router.push("/dhow-manager/walk-in");
+    router.push(`${portalBase}/walk-in`);
   };
 
   return (
@@ -25,7 +27,7 @@ function RegisterWalkInFormContainer() {
       {/* Back navigation & Header */}
       <div className="space-y-4">
         <button
-          onClick={() => router.push("/dhow-manager/walk-in")}
+          onClick={() => router.push(`${portalBase}/walk-in`)}
           className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors text-xs font-bold"
         >
           <ArrowLeft className="w-4 h-4" />

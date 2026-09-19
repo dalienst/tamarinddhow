@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useFetchBookings } from "@/hooks/bookings/actions";
 import { cancelBooking, updateBooking, deleteBooking } from "@/services/bookings";
 import { useFetchSchedules } from "@/hooks/vessels/actions";
@@ -31,8 +31,10 @@ import { Booking } from "@/types/booking";
 
 export default function WalkInBookingPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = useSession();
   const token = session?.user?.token || "";
+  const portalBase = pathname.startsWith("/supervisor") ? "/supervisor" : "/dhow-manager";
 
   // Modals state
   const [rescheduleTarget, setRescheduleTarget] = useState<Booking | null>(null);
@@ -212,7 +214,7 @@ export default function WalkInBookingPage() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button
-            onClick={() => router.push("/dhow-manager/walk-in/create")}
+            onClick={() => router.push(`${portalBase}/walk-in/create`)}
             className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-amber-600/15 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             <UserPlus className="w-4 h-4" />
@@ -323,7 +325,7 @@ export default function WalkInBookingPage() {
                             {active && (
                               <>
                                 <button
-                                  onClick={() => router.push(`/dhow-manager/walk-in/${booking.reference}/edit`)}
+                                  onClick={() => router.push(`${portalBase}/walk-in/${booking.reference}/edit`)}
                                   className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors border border-slate-200"
                                   title="Edit Booking Details"
                                 >

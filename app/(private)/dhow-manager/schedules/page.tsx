@@ -30,10 +30,13 @@ import {
   Pencil
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { usePathname } from "next/navigation";
 
 export default function ScheduleCenterPage() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const token = session?.user?.token || "";
+  const portalBase = pathname.startsWith("/supervisor") ? "/supervisor" : "/dhow-manager";
 
   // Query Hooks
   const { data: schedulesData, isLoading: loadingSchedules, refetch: refetchSchedules } = useFetchSchedules();
@@ -451,13 +454,13 @@ export default function ScheduleCenterPage() {
 
                       <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200/50">
                         <Link
-                          href={`/dhow-manager/schedules/${s.reference}/manifest`}
+                          href={`${portalBase}/schedules/${s.reference}/manifest`}
                           className="flex items-center gap-1.5 px-3 py-2 bg-white text-amber-800 hover:bg-amber-50 font-bold text-xs rounded-lg border border-amber-200/60 transition-colors"
                         >
                           <QrCode className="w-3.5 h-3.5" /> Manifest
                         </Link>
                         <Link
-                          href={`/dhow-manager/schedules/${s.reference}/tables`}
+                          href={`${portalBase}/schedules/${s.reference}/tables`}
                           className="flex items-center gap-1.5 px-3 py-2 bg-white text-indigo-800 hover:bg-indigo-50 font-bold text-xs rounded-lg border border-indigo-200/60 transition-colors"
                         >
                           <Table className="w-3.5 h-3.5" /> Seating

@@ -6,11 +6,15 @@ import { usePathname } from 'next/navigation';
 import { 
   Home, 
   Calendar, 
+  UserPlus, 
+  Ship, 
   QrCode,
   HelpCircle,
   X,
   List,
-  Settings
+  Settings,
+  Clock,
+  Layers
 } from 'lucide-react';
 import Image from 'next/image';
 
@@ -23,9 +27,16 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Dashboard', href: '/supervisor/dashboard', icon: Home },
-    { name: 'QR Scanner', href: '/supervisor/scanner', icon: QrCode },
-    { name: 'Help Guide', href: '/supervisor/help', icon: HelpCircle },
+    { name: 'Dashboard',        href: '/supervisor/dashboard',         icon: Home },
+    { name: 'Sailing Calendar', href: '/supervisor/schedules',         icon: Calendar,    exact: true },
+    { name: 'Sailing List',     href: '/supervisor/schedules/list',    icon: List },
+    { name: 'Walk-In Booking',  href: '/supervisor/walk-in',           icon: UserPlus },
+    { name: 'Vessels',          href: '/supervisor/vessels',           icon: Ship },
+    { name: 'Dining Schedules', href: '/supervisor/dining-schedules',  icon: Clock },
+    { name: 'Add-Ons',          href: '/supervisor/addons',            icon: Layers },
+    { name: 'QR Scanner',       href: '/supervisor/scanner',           icon: QrCode },
+    { name: 'Profile Settings', href: '/supervisor/profile',           icon: Settings },
+    { name: 'Help Guide',       href: '/supervisor/help',              icon: HelpCircle },
   ];
 
   return (
@@ -62,7 +73,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           {/* Nav Links */}
           <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const isActive = item.exact
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
                   key={item.name}
@@ -82,6 +95,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               );
             })}
           </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-100">
+            <p className="text-xs text-center text-gray-400 font-medium">
+              &copy; {new Date().getFullYear()} Tamarind
+            </p>
+          </div>
         </div>
       </aside>
     </>

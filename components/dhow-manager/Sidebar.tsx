@@ -17,7 +17,8 @@ import {
   Settings,
   Clock,
   Layers,
-  ShieldCheck
+  Users,
+  Activity
 } from 'lucide-react';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
@@ -45,8 +46,36 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: 'Scanner', href: '/dhow-manager/scanner', icon: QrCode },
     { name: 'Help Guide', href: '/dhow-manager/help', icon: HelpCircle },
     { name: 'Profile Settings', href: '/dhow-manager/profile', icon: Settings },
-    ...(isAdmin ? [{ name: 'Admin Portal', href: '/superuser/dashboard', icon: ShieldCheck }] : []),
   ];
+
+  // Only superusers and staff see the Admin section.
+  const adminItems = [
+    { name: 'Users', href: '/superuser/dashboard', icon: Users },
+    { name: 'Activity Log', href: '/superuser/activity', icon: Activity },
+  ];
+
+  const renderLink = (item: (typeof navItems)[number]) => {
+    const isActive = item.href === '/dhow-manager/schedules'
+      ? pathname === item.href
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+    return (
+      <Link
+        key={item.name}
+        href={item.href}
+        className={`
+          flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
+          ${isActive
+            ? 'bg-amber-50 text-amber-700'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }
+        `}
+        onClick={() => setIsOpen(false)}
+      >
+        <item.icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-400'}`} />
+        {item.name}
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -81,28 +110,13 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
 
           {/* Nav Links */}
           <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-            {navItems.map((item) => {
-              const isActive = item.href === '/dhow-manager/schedules' 
-                ? pathname === item.href 
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all
-                    ${isActive 
-                      ? 'bg-amber-50 text-amber-700' 
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                  `}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-400'}`} />
-                  {item.name}
-                </Link>
-              );
-            })}
+            {navItems.map(renderLink)}
+            {isAdmin && (
+              <>
+                <p className="px-3 pt-5 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Admin</p>
+                {adminItems.map(renderLink)}
+              </>
+            )}
           </nav>
 
           {/* Footer */}

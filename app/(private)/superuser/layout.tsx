@@ -3,7 +3,7 @@
 import React, { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import SuperuserNav from "@/components/superuser/SuperuserNav";
+import DhowManagerShell from "@/components/dhow-manager/DhowManagerShell";
 import LoadingSpinner from "@/components/dhow-manager/LoadingSpinner";
 
 export default function SuperuserLayout({
@@ -27,10 +27,6 @@ export default function SuperuserLayout({
     return <LoadingSpinner />;
   }
 
-  return (
-    <>
-      <SuperuserNav />
-      {children}
-    </>
-  );
+  // Admins share the manager shell; its sidebar adds an Admin section for them.
+  return <DhowManagerShell>{children}</DhowManagerShell>;
 }

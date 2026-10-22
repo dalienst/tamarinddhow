@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Menu, LogOut, User as UserIcon } from 'lucide-react';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 
 interface NavbarProps {
@@ -10,6 +10,9 @@ interface NavbarProps {
 }
 
 export default function Navbar({ setSidebarOpen }: NavbarProps) {
+  const { data: session } = useSession();
+  const isAdmin = !!(session?.user?.is_superuser || session?.user?.is_staff);
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 sticky top-0 z-30 flex items-center justify-between px-4 sm:px-6">
       <div className="flex items-center">
@@ -19,7 +22,7 @@ export default function Navbar({ setSidebarOpen }: NavbarProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h2 className="text-lg font-bold text-gray-800 hidden sm:block tracking-tight">Manager Portal</h2>
+        <h2 className="text-lg font-bold text-gray-800 hidden sm:block tracking-tight">{isAdmin ? 'Admin Portal' : 'Manager Portal'}</h2>
       </div>
 
       <div className="flex items-center gap-4">
@@ -28,7 +31,7 @@ export default function Navbar({ setSidebarOpen }: NavbarProps) {
           className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-50 hover:bg-gray-150 rounded-lg border border-gray-100 transition-colors cursor-pointer"
         >
             <UserIcon className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-700">Manager Profile</span>
+            <span className="text-sm font-semibold text-gray-700">{isAdmin ? 'My Profile' : 'Manager Profile'}</span>
         </Link>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
@@ -40,4 +43,4 @@ export default function Navbar({ setSidebarOpen }: NavbarProps) {
       </div>
     </header>
   );
-}
+}

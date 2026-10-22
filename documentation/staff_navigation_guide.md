@@ -7,7 +7,7 @@ This guide covers the **internal module** of the Tamarind Dhow booking managemen
 ## 1. Getting started
 
 ### 1.1 Getting your account
-Staff accounts are created by a Dhow Manager (see section 4). When yours is created, you receive an **activation email**. Open the link, choose a password and confirm it. The password must contain an uppercase letter, a number and a special character. Then sign in.
+Staff accounts are created by a Dhow Manager (see section 4). When yours is created, you receive a welcome email with a **temporary password**. Click the sign-in button in the email and sign in with your email and that password. Then change it under **Profile Settings** (section 1.4). Your new password must contain an uppercase letter, a number and a special character.
 
 ### 1.2 Signing in
 1. Go to the site and click **Sign In**, or open `/login`.
@@ -182,7 +182,7 @@ Supervisors work through the same screens as the manager (section 2.3 to 2.6). A
 ---
 
 ## 4. Creating staff accounts
-On the Dhow Manager **Dashboard**, go to the **Users** card and click **+**. Choose **Create Dhow Manager** or **Create Supervisor**. The new user receives an activation email (section 1.1).
+On the Dhow Manager **Dashboard**, go to the **Users** card and click **+**. Choose **Create Dhow Manager** or **Create Supervisor**. The new user receives a welcome email with a temporary password (section 1.1). A superuser can also create managers, supervisors and agents from **+ Add New User** on the Superuser Dashboard.
 
 ---
 

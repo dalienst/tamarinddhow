@@ -177,3 +177,53 @@ export const deleteAccount = async (
   );
   return response.data;
 };
+
+// Fields a superuser may change on another user's account. Passwords can only be changed by the user themselves.
+export type AdminUserUpdate = Partial<
+  Pick<
+    User,
+    | "first_name"
+    | "last_name"
+    | "email"
+    | "username"
+    | "phone_number"
+    | "is_active"
+    | "is_dhow_manager"
+    | "is_supervisor"
+    | "is_agent"
+    | "is_guest"
+  >
+>;
+
+export const adminUpdateUser = async (
+  usercode: string,
+  data: AdminUserUpdate,
+  headers: { headers: { Authorization: string } }
+): Promise<User> => {
+  const response: AxiosResponse<User> = await apiActions.patch(
+    `/api/v1/auth/${usercode}/`,
+    data,
+    headers
+  );
+  return response.data;
+};
+
+export interface SignupSuperuser {
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  password: string;
+}
+
+export const signupSuperuser = async (
+  data: SignupSuperuser,
+  headers: { headers: { Authorization: string } }
+): Promise<any> => {
+  const response: AxiosResponse<any> = await apiActions.post(
+    `/api/v1/auth/superusers/signup/`,
+    data,
+    headers
+  );
+  return response.data;
+};

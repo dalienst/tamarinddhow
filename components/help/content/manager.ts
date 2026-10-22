@@ -239,9 +239,9 @@ export const managerTopics: HelpTopic[] = [
     steps: [
       "Go to the **Dashboard** and scroll to the **Users** card.",
       "Click the **+** button and choose **Create Dhow Manager** or **Create Supervisor**.",
-      "Enter their details and save. They receive an email with a link to set their password.",
+      "Enter their details and save. They receive an email with a **temporary password** and a sign-in button.",
     ],
-    tip: "If they can't find the email, ask them to check their spam folder. They can also use **Forgot password?** on the sign-in page.",
+    tip: "Ask them to change the temporary password under **Profile Settings** after their first sign-in. If they can't find the email, ask them to check their spam folder, or use **Forgot password?** on the sign-in page.",
     link: { href: "/dhow-manager/dashboard", label: "Open Dashboard" },
   },
 ];

@@ -16,9 +16,11 @@ import {
   List,
   Settings,
   Clock,
-  Layers
+  Layers,
+  ShieldCheck
 } from 'lucide-react';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,6 +29,8 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = !!(session?.user?.is_superuser || session?.user?.is_staff);
 
   const navItems = [
     { name: 'Dashboard', href: '/dhow-manager/dashboard', icon: Home },
@@ -41,6 +45,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     { name: 'Scanner', href: '/dhow-manager/scanner', icon: QrCode },
     { name: 'Help Guide', href: '/dhow-manager/help', icon: HelpCircle },
     { name: 'Profile Settings', href: '/dhow-manager/profile', icon: Settings },
+    ...(isAdmin ? [{ name: 'Admin Portal', href: '/superuser/dashboard', icon: ShieldCheck }] : []),
   ];
 
   return (

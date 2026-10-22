@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getPublicTicketDetail } from "@/services/bookings";
-import { Anchor, Calendar, Clock, MapPin, Printer, QrCode, Ship, User, Users, AlertTriangle } from "lucide-react";
+import { Anchor, Calendar, Clock, MapPin, Printer, QrCode, Ship, User, Users, AlertTriangle, HelpCircle } from "lucide-react";
+import Link from "next/link";
 
 export default function PublicTicketPage() {
   const { ref } = useParams() as { ref: string };
@@ -193,6 +194,14 @@ export default function PublicTicketPage() {
             <Printer className="w-4 h-4" />
             Print Boarding Pass / PDF
           </button>
+
+          <Link
+            href="/help/check-in"
+            className="w-full py-2 text-slate-500 hover:text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 print:hidden"
+          >
+            <HelpCircle className="w-3.5 h-3.5" />
+            How boarding works
+          </Link>
         </div>
       </div>
     </div>

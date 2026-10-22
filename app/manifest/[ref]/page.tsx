@@ -5,7 +5,8 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { getPublicManifest } from "@/services/vessels";
 import { updateBookingGuest, cancelBooking, noShowBooking } from "@/services/bookings";
-import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil, Plus } from "lucide-react";
+import { Ship, Download, Search, Copy, Check, Clock, AlertTriangle, RefreshCw, UserX, XCircle, Loader2, Pencil, Plus, HelpCircle } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { SupervisorBookingModal } from "@/components/dhow-manager/SupervisorBookingModal";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
@@ -288,6 +289,15 @@ export default function PublicManifestPage() {
                     Register Walk-In
                   </button>
                 )}
+
+                <Link
+                  href="/help/check-in"
+                  target="_blank"
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/10 text-white font-bold text-xs rounded-xl transition-all"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  How to check in
+                </Link>
 
                 {/* Manual Sync Button */}
                 <button
